@@ -85,7 +85,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	const shouldGenerate = params.get('generate') === 'true';
 
 	if (shouldGenerate && outputBox && sourceBtn) {
-		const API_KEY = "AIzaSyAraWQNTPxoe4D8bv0upb9o-j-pOGNMpZ0"; // Replace with your key
+		const API_KEY = "AIzaSyBHpi_Q87VSBgW81H6_96qrNlTmKQYRwWE"; // Replace with your key
 		outputBox.innerHTML = `<p>Picking a viral recipe...</p>`;
 
 		try {
