@@ -1,0 +1,11 @@
+<svg width="41" height="40" viewBox="0 0 41 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Arrow-Up-Down--Streamline-Mynaui" clip-path="url(#clip0_2031_85)">
+<rect id="Rectangle 17" x="1.5" y="1" width="38" height="38" rx="4" fill="#D9D9D9" stroke="black" stroke-width="2"/>
+<path id="Vector" d="M13.4688 28.5938V11.4062M13.4688 11.4062L18.9375 16.875M13.4688 11.4062L8 16.875M27.5312 11.4062V28.5938M27.5312 28.5938L33 23.125M27.5312 28.5938L22.0625 23.125" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<clipPath id="clip0_2031_85">
+<rect width="40" height="40" fill="white" transform="translate(0.5)"/>
+</clipPath>
+</defs>
+</svg>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 61 72">
+  <!-- Generator: Adobe Illustrator 29.0.1, SVG Export Plug-In . SVG Version: 2.1.0 Build 192)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: none;
+        stroke: #000;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2px;
+      }
+    </style>
+  </defs>
+  <path class="st0" d="M1,1h59v56h-16.4v14l-13.1-14H14.1L1,43V1Z"/>
+  <path d="M8.6,30.6v-1.2h-1.2v-1.2h-1.2v-3.8h1.2v-1.2h1.2v-1.2h5v1.2h1.2v1.2h-2.5v-1.2h-2.5v1.2h-1.2v3.8h1.2v1.2h2.5v-1.2h2.5v1.2h-1.2v1.2h-5ZM17.4,30.6v-1.2h2.5v-6.2h-1.2v-1.2h3.8v7.5h2.5v1.2h-7.5ZM29.9,23.1v-1.2h2.5v1.2h-2.5ZM27.4,30.6v-1.2h2.5v-3.8h-1.2v-1.2h3.8v5h2.5v1.2h-7.5ZM37.4,30.6v-1.2h-1.2v-3.8h1.2v-1.2h7.5v1.2h-6.2v3.8h6.2v1.2h-7.5ZM46.1,30.6v-8.8h2.5v5h2.5v-1.2h1.2v-1.2h2.5v1.2h-1.2v1.2h-1.2v1.2h1.2v1.2h1.2v1.2h-2.5v-1.2h-1.2v-1.2h-2.5v2.5h-2.5ZM21.1,40.6v-8.8h2.5v1.2h1.2v1.2h1.2v-1.2h1.2v-1.2h2.5v8.8h-2.5v-5h-1.2v2.5h-1.2v-2.5h-1.2v5h-2.5ZM32.4,40.6v-1.2h-1.2v-3.8h1.2v-1.2h6.2v1.2h1.2v2.5h-6.2v1.2h5v1.2h-6.2ZM33.6,36.9h3.8v-1.2h-3.8v1.2Z"/>
+</svg>

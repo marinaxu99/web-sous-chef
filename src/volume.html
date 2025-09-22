@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="Update your description here" />
+	<title>Web Sous-Chef</title>
+	<!--link to CSS file.-->
+	<link href="css/style.css" rel="stylesheet">
+</head>
+
+<body>
+	<main>
+		<nav>
+			<a class="navigation" href="toolkit.html" title="Back">back</a>
+			<a class="navigation" href="index.html" title="Home">home</a>
+		</nav>
+
+		<div class="volume-container">
+			<h1>Volume Converter</h1>
+			<div class="content-container">
+				<div class="chat-robot">
+					<p>Chef! Select units and input volume to convert!</p>
+					<img src="images/robot-head.svg" alt="robot head icon">
+				</div>
+				<div class="volume-convert-container">
+					<div class="volume-convert-unit">
+						<button class="unit-btn left" data-unit="milliliters">ml</button>
+						<button class="unit-btn right" data-unit="tablespoons">tbsp</button>
+						<button class="unit-btn left" data-unit="cups">cups</button>
+						<button class="unit-btn right" data-unit="teaspoons">tsp</button>
+					</div>
+					<div class="volume-convert-number">
+						<div class="volume-convert-input">
+							<input type="number" name="volume-input left-input" placeholder="0">
+							<p class="unit-label-left"> </p>
+						</div>
+						<img src="images/convert.svg" alt="convert icon" class="convert-volume-btn">
+						<div class="volume-convert-input">
+							<input type="number" name="volume-input right-input" placeholder="0">
+							<p class="unit-label-right"> </p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</main>
+
+	<audio class="button-sound" src="sounds/robot-click.mp3" preload="auto"></audio>
+	<audio class="function-click" src="sounds/function-click.mp3" preload="auto"></audio>
+
+
+	<!--link to JS file.-->
+	<script src="js/scripts.js"></script>
+</body>
+
+</html>

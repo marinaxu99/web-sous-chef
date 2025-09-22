@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="Update your description here" />
+	<title>Web Sous-Chef</title>
+	<!--link to CSS file.-->
+	<link href="css/style.css" rel="stylesheet">
+</head>
+
+<body>
+	<main>
+		<nav>
+			<a class="navigation" href="index.html" title="Back">back</a>
+			<a class="navigation" href="index.html" title="Home">home</a>
+		</nav>
+
+		<div class="ai-recipe-generator">
+			<!-- I'm guess i should start another semantic list since this is a new html page? But I also want to try using the same html file for all pages if possible -->
+			<h1>AI Recipe Generator</h1>
+			<div class="content-container">
+				<div class="chat-robot">
+					<p>Chef! What ingredients do you have?</p>
+					<img src="images/robot-head.svg" alt="robot head icon">
+				</div>
+				<!--chat box code got from ChatGPT, prompt: how can I make a chatbox on my website, where the user can input the ingredients they have, and the "robot" will respond with a ai generated recipe? here is the webpage design, let me know how.-->
+
+				<div class="chat-log"></div>
+
+				<div class="chat-user">
+					<div class="response-box">
+						<!--chatbox code got from ChatGPT, prompt: how to create a type box, but just as a space holder to start in html-->
+						<input type="text" class="user-input" placeholder=" " />
+						<button class="send-btn">Send</button>
+					</div>
+
+					<a href="mystery.html" title="Go to Mystery Recipe Page" class="generate-mystery-recipe-button">mystery
+						recipe</a>
+				</div>
+			</div>
+		</div>
+
+	</main>
+
+	<audio class="button-sound" src="sounds/robot-click.mp3" preload="auto"></audio>
+
+	<!--link to JS file.-->
+	<script type="module" src="js/gemini.js"></script>
+</body>
+
+</html>

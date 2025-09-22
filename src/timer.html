@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="Update your description here" />
+	<title>Web Sous-Chef</title>
+	<!--link to CSS file.-->
+	<link href="css/style.css" rel="stylesheet">
+</head>
+
+<body>
+	<main>
+		<nav>
+			<a class="navigation" href="toolkit.html" title="Back">back</a>
+			<a class="navigation" href="index.html" title="Home">home</a>
+		</nav>
+
+		<div class="cooking-timer-container">
+			<h1>Cooking Timer</h1>
+			<div class="content-container">
+				<div class="chat-robot">
+					<p>Chef! Click time buttons to add to the timer!</p>
+					<img src="images/robot-head.svg" alt="robot head icon">
+				</div>
+				<div class="timer-container">
+					<div class="timer-button">
+						<button class="timer-button-1"> <span class="button-digit">1</span> min</button>
+						<button class="timer-button-2"> <span class="button-digit">5</span> min</button>
+						<button class="timer-button-3"> <span class="button-digit">10</span> min</button>
+					</div>
+					<!--fixing the weird spacing when numbers change, got from GPT: I want the numbers to take up same space, I don't want the background to stretch when number changes-->
+					<div class="timer-display">
+						<p class="timer-text">
+							<span class="digit">0</span><span class="digit">0</span>
+							:
+							<span class="digit">0</span><span class="digit">0</span>
+							:
+							<span class="digit">0</span><span class="digit">0</span>
+						</p>
+					</div>
+					<div class="function-buttons">
+						<div class="start-and-pause-buttons">
+							<img src="images/start.svg" alt="start button">
+							<img src="images/pause.svg" alt="pause button">
+						</div>
+						<div class="reset-button"><img src="images/reset.svg" alt="reset button"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+	</main>
+
+	<!--timer done effect got from GPT-->
+	<audio class="timer-sound" src="sounds/timer-done.mp3" preload="auto"></audio>
+
+	<div class="time-up-popup hidden-popup">
+		<h2>Time's Up!</h2>
+		<p>Overtime: <span class="overtime-count">0</span></p>
+		<button class="popup-done-btn">Done</button>
+	</div>
+
+	<audio class="button-sound" src="sounds/robot-click.mp3" preload="auto"></audio>
+	<audio class="function-click" src="sounds/function-click.mp3" preload="auto"></audio>
+
+	<!--link to JS file.-->
+	<script src="js/scripts.js"></script>
+</body>
+
+</html>
