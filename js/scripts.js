@@ -23,7 +23,7 @@ const bubbleApear = document.querySelector('.thought-bubble');
 
 if (bubbleApear) {
 	setTimeout(() => {
-		bubbleApear.src = 'images/thought-bubble-2.svg';
+		bubbleApear.src = 'src/images/thought-bubble-2.svg';
 	}, 2000);
 }
 
