@@ -1,19 +1,21 @@
 // === gemini.js — drop-in ===
 // Keep this module isolated from other JS.
 
-// --- ENDPOINTS (no secrets in frontend) ---
+// endpoints
 const WORKER_URL = "https://souschef-proxy.marinaxu99.workers.dev/api/gemini";
-const FALLBACK_URL = "https://souschef-gemini-fallback.vercel.app/api/gemini"; // <-- your Vercel function
+const FALLBACK_URL = "https://souschef-gemini-fallback.vercel.app/api/gemini";
+
+// helper: sleep
+const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function askGeminiViaWorker(promptText) {
-	// optional: random style nudge so repeats feel fresh
+	// random style nudge for variety
 	const STYLES = ["Italian", "Mexican", "Thai", "Japanese", "French", "Greek", "Indian", "Korean", "Moroccan", "Vietnamese"];
 	const style = STYLES[Math.floor(Math.random() * STYLES.length)];
 
 	const body = {
-		// sampling controls => more creativity/variation
 		generationConfig: {
-			temperature: 1.1,   // 0.7–1.3 are good creative ranges
+			temperature: 1.1,
 			topP: 0.95,
 			topK: 40,
 			candidateCount: 1
@@ -31,27 +33,52 @@ Extra rules for variety:
 		}]
 	};
 
-	let resp = await fetch(WORKER_URL, {
+	// Try Worker with 2 quick retries on 429/503 before falling back
+	let lastText = "";
+	for (let attempt = 0; attempt < 3; attempt++) {
+		const resp = await fetch(WORKER_URL, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body)
+		});
+
+		if (resp.ok) {
+			const data = await resp.json();
+			const parts = data?.candidates?.[0]?.content?.parts || [];
+			const out = parts.map(p => p.text || "").join("\n").trim();
+			return out || "(No text returned)";
+		}
+
+		// read body for decision making
+		lastText = await resp.text().catch(() => "");
+
+		// If location-blocked, break to fallback immediately
+		const geoBlocked = resp.status === 400 && lastText.includes("User location is not supported");
+		if (geoBlocked) break;
+
+		// If overloaded/throttled, retry with backoff; otherwise break to fallback
+		if (resp.status === 503 || resp.status === 429) {
+			await delay(400 * (attempt + 1)); // 400ms, then 800ms
+			continue;
+		}
+
+		// other errors: go to fallback
+		break;
+	}
+
+	// Fallback via Vercel (US)
+	const fallbackResp = await fetch(FALLBACK_URL, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(body)
 	});
 
-	if (!resp.ok) {
-		const text = await resp.text().catch(() => "");
-		const geoBlocked = resp.status === 400 && text.includes("User location is not supported");
-		if (geoBlocked) {
-			resp = await fetch(FALLBACK_URL, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(body)
-			});
-		} else {
-			throw new Error(`Worker/API error ${resp.status}: ${text}`);
-		}
+	if (!fallbackResp.ok) {
+		const t = await fallbackResp.text().catch(() => "");
+		throw new Error(`Fallback/API error ${fallbackResp.status}: ${t || lastText}`);
 	}
 
-	const data = await resp.json();
+	const data = await fallbackResp.json();
 	const parts = data?.candidates?.[0]?.content?.parts || [];
 	return parts.map(p => p.text || "").join("\n").trim() || "(No text returned)";
 }
