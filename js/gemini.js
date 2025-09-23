@@ -3,7 +3,7 @@
 //airecipe — using Google Generative AI API, added more functions with the help of GPT
 import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-const API_KEY = "AIzaSyBHpi_Q87VSBgW81H6_96qrNlTmKQYRwWE";
+const API_KEY = "";
 const genAI = new GoogleGenerativeAI(API_KEY);
 const model = genAI.getGenerativeModel({ model: "models/gemini-1.5-flash" });
 
