@@ -1,11 +1,39 @@
 //to keep the module away from other javascript
 
 //airecipe — using Google Generative AI API, added more functions with the help of GPT
-import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+// --- BEGIN: worker proxy client ---
+const WORKER_URL = "https://souschef-proxy.marinaxu99.workers.dev/api/gemini";
+// ^^^ replace with your actual Worker URL (keep the /api/gemini path if you used my worker code)
 
-const API_KEY = "";
-const genAI = new GoogleGenerativeAI(API_KEY);
-const model = genAI.getGenerativeModel({ model: "models/gemini-1.5-flash" });
+async function askGeminiViaWorker(promptText) {
+	// Build the body exactly like Gemini's REST expects
+	const body = {
+		contents: [
+			{ role: "user", parts: [{ text: promptText }] }
+		]
+	};
+
+	const resp = await fetch(WORKER_URL, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(body)
+	});
+
+	if (!resp.ok) {
+		const text = await resp.text().catch(() => "");
+		throw new Error(`Worker/API error ${resp.status}: ${text}`);
+	}
+
+	const data = await resp.json();
+
+	// Extract text from Gemini response:
+	// data.candidates[0].content.parts may contain multiple parts; join any .text fields.
+	const parts = data?.candidates?.[0]?.content?.parts || [];
+	const out = parts.map(p => p.text || "").join("\n").trim();
+
+	return out || "(No text returned)";
+}
+// --- END: worker proxy client ---
 
 document.addEventListener("DOMContentLoaded", function () {
 	const sendBtn = document.querySelector('.send-btn');
@@ -48,8 +76,7 @@ document.addEventListener("DOMContentLoaded", function () {
 3. Step-by-step instructions
 Format the instructions in bullet points. Make it easy to copy.`;
 
-				const result = await model.generateContent(prompt);
-				const response = await result.response.text();
+				const response = await askGeminiViaWorker(prompt);
 
 				clearInterval(loadingInterval);
 				botMsg.classList.remove("loading");
