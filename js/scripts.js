@@ -6,6 +6,7 @@
 // - Run npm run test regularly to check autograding
 // - You'll need to link this file to your HTML :)
 
+const WORKER_BASE = "https://souschef-proxy.marinaxu99.workers.dev";
 
 //for the credit to appear after the info icon is clicked
 const infoIcon = document.querySelector('.info-icon');
@@ -85,15 +86,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 	const shouldGenerate = params.get('generate') === 'true';
 
 	if (shouldGenerate && outputBox && sourceBtn) {
-		const API_KEY = ""; // Replace with your key
 		outputBox.innerHTML = `<p>Picking a viral recipe...</p>`;
 
 		try {
 			// Search using viral/trending recipe keywords
 			const query = "recipes OR easy recipes OR quick meals OR meal prep";
-			const response = await fetch(
-				`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=${encodeURIComponent(query)}&order=viewCount&key=${API_KEY}`
-			);
+
+			// 👇 Call your Worker instead of YouTube directly
+			const url = `${WORKER_BASE}/api/youtube?q=${encodeURIComponent(query)}&maxResults=10&order=viewCount`;
+			const response = await fetch(url);
 
 			const data = await response.json();
 
