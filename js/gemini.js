@@ -5,29 +5,46 @@
 const WORKER_URL = "https://souschef-proxy.marinaxu99.workers.dev/api/gemini";
 const FALLBACK_URL = "https://souschef-gemini-fallback.vercel.app/api/gemini"; // <-- your Vercel function
 
-// --- API caller with auto-fallback (handles KR geo-block) ---
 async function askGeminiViaWorker(promptText) {
+	// optional: random style nudge so repeats feel fresh
+	const STYLES = ["Italian", "Mexican", "Thai", "Japanese", "French", "Greek", "Indian", "Korean", "Moroccan", "Vietnamese"];
+	const style = STYLES[Math.floor(Math.random() * STYLES.length)];
+
 	const body = {
-		contents: [{ role: "user", parts: [{ text: promptText }] }],
+		// sampling controls => more creativity/variation
+		generationConfig: {
+			temperature: 1.1,   // 0.7–1.3 are good creative ranges
+			topP: 0.95,
+			topK: 40,
+			candidateCount: 1
+		},
+		contents: [{
+			role: "user",
+			parts: [{
+				text: `${promptText}
+
+Extra rules for variety:
+- Give it a subtle ${style} twist.
+- If asked again with the same ingredients, change seasoning, technique, or format (e.g., bowl, wrap, stir-fry, salad).
+- Do NOT repeat the exact same recipe wording as a previous answer.`
+			}]
+		}]
 	};
 
-	// 1) Try Cloudflare Worker first (fastest for most users)
 	let resp = await fetch(WORKER_URL, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(body),
+		body: JSON.stringify(body)
 	});
 
-	// 2) If Gemini blocks by location (KR), retry through Vercel (US)
 	if (!resp.ok) {
 		const text = await resp.text().catch(() => "");
 		const geoBlocked = resp.status === 400 && text.includes("User location is not supported");
 		if (geoBlocked) {
-			console.log("⚠️ Geo-block detected. Using Vercel fallback…");
 			resp = await fetch(FALLBACK_URL, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(body),
+				body: JSON.stringify(body)
 			});
 		} else {
 			throw new Error(`Worker/API error ${resp.status}: ${text}`);
@@ -36,9 +53,9 @@ async function askGeminiViaWorker(promptText) {
 
 	const data = await resp.json();
 	const parts = data?.candidates?.[0]?.content?.parts || [];
-	const out = parts.map(p => p.text || "").join("\n").trim();
-	return out || "(No text returned)";
+	return parts.map(p => p.text || "").join("\n").trim() || "(No text returned)";
 }
+
 
 // --- UI wiring ---
 document.addEventListener("DOMContentLoaded", function () {
