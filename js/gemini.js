@@ -26,8 +26,8 @@ async function askGeminiViaWorker(promptText) {
 				text: `${promptText}
 
 Extra rules for variety:
-- Give it a subtle ${style} twist.
-- If asked again with the same ingredients, change seasoning, technique, or format (e.g., bowl, wrap, stir-fry, salad).
+- Make it in ${style} cuisine.
+- If asked again with the same ingredients, change the cuisine, technique, or format (e.g., bowl, wrap, stir-fry, salad).
 - Do NOT repeat the exact same recipe wording as a previous answer.`
 			}]
 		}]
