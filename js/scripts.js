@@ -90,7 +90,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 		try {
 			// Search using viral/trending recipe keywords
-			const query = "recipes OR easy recipes OR quick meals OR meal prep";
+			const query = `"recipe" OR "cooking" OR "tasty food" OR "viral recipe" OR "home cooking" OR "chef" OR "food hack" OR "easy dinner" OR "comfort food"`;
 
 			// 👇 Call your Worker instead of YouTube directly
 			const url = `${WORKER_BASE}/api/youtube?q=${encodeURIComponent(query)}&maxResults=10&order=viewCount`;
