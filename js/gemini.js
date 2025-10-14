@@ -1,11 +1,11 @@
-// === gemini.js — drop-in ===
-// Keep this module isolated from other JS.
+// === gemini.js — updated ===
+// Frontend caller for your Cloudflare Worker proxy.
+// Expects the Worker to call Google with model `gemini-2.5-flash` on v1beta.
 
-// endpoints
 const WORKER_URL = "https://souschef-proxy.marinaxu99.workers.dev/api/gemini";
 const FALLBACK_URL = "https://souschef-gemini-fallback.vercel.app/api/gemini";
 
-// helper: sleep
+// Small helper
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function askGeminiViaWorker(promptText) {
@@ -17,8 +17,8 @@ async function askGeminiViaWorker(promptText) {
 		generationConfig: {
 			temperature: 1.1,
 			topP: 0.95,
-			topK: 40,
-			candidateCount: 1
+			topK: 40
+			// candidateCount omitted (default 1)
 		},
 		contents: [{
 			role: "user",
@@ -33,7 +33,7 @@ Extra rules for variety:
 		}]
 	};
 
-	// Try Worker with 2 quick retries on 429/503 before falling back
+	// Try Worker with quick retries on 429/503 before falling back
 	let lastText = "";
 	for (let attempt = 0; attempt < 3; attempt++) {
 		const resp = await fetch(WORKER_URL, {
@@ -43,30 +43,29 @@ Extra rules for variety:
 		});
 
 		if (resp.ok) {
-			const data = await resp.json();
+			const data = await resp.json().catch(() => ({}));
 			const parts = data?.candidates?.[0]?.content?.parts || [];
 			const out = parts.map(p => p.text || "").join("\n").trim();
 			return out || "(No text returned)";
 		}
 
-		// read body for decision making
+		// read error text for decisions / debugging
 		lastText = await resp.text().catch(() => "");
 
-		// If location-blocked, break to fallback immediately
-		const geoBlocked = resp.status === 400 && lastText.includes("User location is not supported");
-		if (geoBlocked) break;
+		// Early escape on location restriction
+		if (resp.status === 400 && lastText.includes("User location is not supported")) break;
 
-		// If overloaded/throttled, retry with backoff; otherwise break to fallback
+		// Retry on transient overload
 		if (resp.status === 503 || resp.status === 429) {
 			await delay(400 * (attempt + 1)); // 400ms, then 800ms
 			continue;
 		}
 
-		// other errors: go to fallback
+		// Other errors -> fallback
 		break;
 	}
 
-	// Fallback via Vercel (US)
+	// Fallback (same body + contract)
 	const fallbackResp = await fetch(FALLBACK_URL, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
@@ -78,11 +77,10 @@ Extra rules for variety:
 		throw new Error(`Fallback/API error ${fallbackResp.status}: ${t || lastText}`);
 	}
 
-	const data = await fallbackResp.json();
+	const data = await fallbackResp.json().catch(() => ({}));
 	const parts = data?.candidates?.[0]?.content?.parts || [];
 	return parts.map(p => p.text || "").join("\n").trim() || "(No text returned)";
 }
-
 
 // --- UI wiring ---
 document.addEventListener("DOMContentLoaded", function () {
