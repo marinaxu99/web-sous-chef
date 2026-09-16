@@ -2,48 +2,65 @@
 <html lang="en">
 
 <head>
-	<meta charset="utf-8">
-	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta name="description" content="Update your description here" />
-	<title>Web Sous-Chef</title>
-	<!--link to CSS file.-->
-	<link href="css/style.css" rel="stylesheet">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Web Sous-Chef: Your intelligent cooking assistant and kitchen workspace." />
+    <title>Web Sous-Chef</title>
+    <link href="css/style.css" rel="stylesheet">
 </head>
 
-<body>
-	<main>
-		<nav class="nav-info">
-			<img class="info-icon" src="src/images/Info_Icon.svg" alt="info icon">
-			<div class="credit-text hidden">
-				Made by: Marina Mingnan Xu
-			</div>
-		</nav>
-		<div class="home-container">
-			<div class="menu-container hidden">
-				<a class="menu-recipe" href="airecipe.html" title="Go to Recipe Page">
-					<img src="src/images/recipe_menu.svg"
-						alt="serving platter icon, click to navigate to recipe page"></a>
-				<a class="menu-toolkit" href="toolkit.html" title="Go to Toolkit Page">
-					<img src="src/images/toolkit_menu.svg" alt="spatula icon, click to navigate to toolkit page">
-				</a>
-			</div>
+<body class="home-page">
+    <main>
+        <nav class="editorial-nav" aria-label="Main navigation">
+            <span class="nav-brand-tag">WEB SOUS-CHEF // WORKSPACE</span>
+            <div class="nav-actions">
+                <button type="button" id="wake-lock-btn" aria-pressed="false">[ ☼ Keep Awake ]</button>
+                <button type="button" id="api-settings-btn" aria-label="API key settings" aria-haspopup="dialog"
+                    aria-controls="api-modal">[ ⚙ API Key ]</button>
+            </div>
+        </nav>
+        <p id="wake-lock-status" role="status" aria-live="polite"></p>
 
-			<div class="intro-container">
-				<div class="thought-bubble-container"><img class="thought-bubble" src="src/images/thought_bubble.svg"
-						alt="thought bubble icon, changes into click-me icon">
-				</div>
-				<img class="robot-click" src="src/images/home_robot.svg"
-					alt="Robot icon on homepage, click to expand the menu">
-				<div class="web-name">
-					<h1 class="web-title">Web Sous-Chef</h1>
-					<h2 class="web-subtitle">your cooking assistant</h2>
-				</div>
-			</div>
-		</div>
-	</main>
-	<!--link to JS file.-->
-	<script src="js/scripts.js"></script>
+        <div class="home-container">
+            <div class="intro-container">
+                <a class="thought-bubble-container" href="airecipe.html" aria-label="Open kitchen workspace">
+                    <img class="thought-bubble" src="src/images/thought_bubble.svg" alt="Click to cook">
+                </a>
+                <a class="robot-link" href="airecipe.html" aria-label="Open kitchen workspace">
+                    <img class="robot-click" src="src/images/home_robot.svg" alt="Sous-Chef robot">
+                </a>
+                <div class="web-name">
+                    <h1 class="web-title">Web Sous-Chef</h1>
+                    <h2 class="web-subtitle">your cooking assistant</h2>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="home-credit">Made by Marina Mingnan Xu</footer>
+
+    <dialog id="api-modal" aria-labelledby="api-modal-title" aria-describedby="api-key-help">
+        <header>
+            <h2 id="api-modal-title">AI ENGINE SETUP</h2>
+            <button type="button" id="close-api-btn" aria-label="Close API settings">×</button>
+        </header>
+        <form id="api-key-form">
+            <label for="gemini-key-input">Google Gemini API Key</label>
+            <input type="password" id="gemini-key-input" placeholder="Paste Google Gemini API Key" autocomplete="off"
+                autocapitalize="none" spellcheck="false" autofocus>
+            <p id="api-key-help">Stored locally in your browser (localStorage). Never routed to an external proxy.</p>
+            <p id="api-status" role="status" aria-live="polite"></p>
+            <div class="api-actions">
+                <button type="submit" id="save-key-btn">Save Key</button>
+                <button type="button" id="clear-key-btn">Clear</button>
+            </div>
+        </form>
+    </dialog>
+
+    <audio class="button-sound" src="src/sounds/robot-click.mp3" preload="auto"></audio>
+    <script src="js/scripts.js"></script>
+    <script type="module" src="js/gemini.js"></script>
 </body>
 
 </html>

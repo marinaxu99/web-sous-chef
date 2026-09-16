@@ -5,51 +5,217 @@
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta name="description" content="Update your description here" />
+	<meta name="description" content="Generate recipes from your ingredients with Google Gemini." />
 	<title>Web Sous-Chef</title>
-	<!--link to CSS file.-->
 	<link href="css/style.css" rel="stylesheet">
 </head>
 
-<body>
+<body class="ai-recipe-page">
 	<main>
-		<nav>
-			<a class="navigation" href="index.html" title="Back">back</a>
-			<a class="navigation" href="index.html" title="Home">home</a>
+		<nav class="editorial-nav" aria-label="Main navigation">
+			<a class="navigation" href="index.html">[ ← Home ]</a>
+			<div class="nav-actions">
+				<button type="button" id="wake-lock-btn" aria-pressed="false">[ ☼ Keep Awake ]</button>
+				<button type="button" id="api-settings-btn" aria-label="API key settings" aria-haspopup="dialog"
+					aria-controls="api-modal">[ ⚙ API Key ]</button>
+			</div>
 		</nav>
+		<p id="wake-lock-status" role="status" aria-live="polite"></p>
 
-		<div class="ai-recipe-generator">
-			<!-- I'm guess i should start another semantic list since this is a new html page? But I also want to try using the same html file for all pages if possible -->
-			<h1>AI Recipe Generator</h1>
-			<div class="content-container">
-				<div class="chat-robot">
-					<p>Chef! What ingredients do you have?</p>
-					<img src="src/images/robot-head.svg" alt="robot head icon">
+		<!-- Two-Column Kitchen Workspace -->
+		<div class="kitchen-workspace">
+
+			<!-- Left Side: Chat & Inputs -->
+			<section class="chat-section">
+				<div class="chat-header">
+					<h1>AI Recipe Generator</h1>
+					<div class="chat-robot">
+						<img src="src/images/robot-head.svg" alt="robot head icon">
+						<p>Chef! What ingredients do you have today?</p>
+					</div>
 				</div>
-				<!--chat box code got from ChatGPT, prompt: how can I make a chatbox on my website, where the user can input the ingredients they have, and the "robot" will respond with a ai generated recipe? here is the webpage design, let me know how.-->
 
-				<div class="chat-log"></div>
+				<div class="chat-log" role="log" aria-label="Recipe conversation" aria-live="polite"></div>
 
-				<div class="chat-user">
-					<div class="response-box">
-						<!--chatbox code got from ChatGPT, prompt: how to create a type box, but just as a space holder to start in html-->
-						<input type="text" class="user-input" placeholder=" " />
-						<button class="send-btn">Send</button>
+				<!-- Anchored Bottom Bar with Filter Dropdown -->
+				<div class="chat-user-dock">
+					<div id="filter-drawer" class="filter-drawer collapsed">
+						<div class="filter-group">
+							<span class="filter-label">Cuisine</span>
+							<div class="pills-row">
+								<button type="button" class="filter-pill active" data-type="cuisine"
+									data-val="All">All</button>
+								<button type="button" class="filter-pill" data-type="cuisine"
+									data-val="Chinese">Chinese</button>
+								<button type="button" class="filter-pill" data-type="cuisine"
+									data-val="Korean">Korean</button>
+								<button type="button" class="filter-pill" data-type="cuisine"
+									data-val="Japanese">Japanese</button>
+								<button type="button" class="filter-pill" data-type="cuisine" data-val="SE Asian">SE
+									Asian</button>
+								<button type="button" class="filter-pill" data-type="cuisine"
+									data-val="Western">Western</button>
+							</div>
+						</div>
+						<div class="filter-group">
+							<span class="filter-label">Diet</span>
+							<div class="pills-row">
+								<button type="button" class="filter-pill active" data-type="diet"
+									data-val="Any">Any</button>
+								<button type="button" class="filter-pill" data-type="diet"
+									data-val="Vegan">Vegan</button>
+								<button type="button" class="filter-pill" data-type="diet"
+									data-val="Vegetarian">Vegetarian</button>
+								<button type="button" class="filter-pill" data-type="diet"
+									data-val="High Protein">High-Protein</button>
+								<button type="button" class="filter-pill" data-type="diet" data-val="Quick (<20m)">Quick
+									&lt;20m</button>
+							</div>
+						</div>
 					</div>
 
-					<a href="mystery.html" title="Go to Mystery Recipe Page"
-						class="generate-mystery-recipe-button">mystery
-						recipe</a>
+					<div class="response-box">
+						<button type="button" id="filter-toggle-btn" class="filter-toggle-btn"
+							title="Toggle Filters">FILTERS ▾</button>
+						<input type="text" class="user-input" aria-label="Your ingredients"
+							placeholder="e.g. eggs, scallions, chili oil, tofu..." />
+						<button class="send-btn" type="button">Send</button>
+					</div>
 				</div>
-			</div>
-		</div>
+			</section>
 
+			<!-- Right Side: Active Recipe Sheet -->
+			<section class="recipe-section" id="recipe-display-area">
+				<div class="empty-recipe-state">
+					<p class="empty-title">NO RECIPE GENERATED YET</p>
+					<p class="empty-sub">Type ingredients on the left and select cuisine tags to build your recipe card.
+					</p>
+				</div>
+			</section>
+		</div>
 	</main>
 
-	<audio class="button-sound" src="src/sounds/robot-click.mp3" preload="auto"></audio>
+	<!-- Step-by-Step Cooking Focus Modal -->
+	<dialog id="focus-steps-modal" class="focus-steps-modal">
+		<div class="focus-modal-content">
+			<header class="focus-modal-header">
+				<span id="focus-modal-step-counter">STEP 1 OF 5</span>
+				<button type="button" id="close-focus-btn">✕ CLOSE</button>
+			</header>
+			<div class="focus-modal-body">
+				<p id="focus-modal-step-text">Heat wok with 1 tablespoon vegetable oil until smoking.</p>
+			</div>
+			<footer class="focus-modal-footer">
+				<button type="button" id="focus-prev-btn">← PREV</button>
+				<button type="button" id="focus-next-btn">NEXT →</button>
+			</footer>
+		</div>
+	</dialog>
 
-	<!--link to JS file.-->
+	<!-- Persistent Collapsed Bottom Dock -->
+	<div id="kitchen-dock" class="kitchen-dock collapsed">
+		<div class="dock-handle">
+			<div class="dock-timer-summary">
+				<span id="dock-timer-badge" aria-label="Timer remaining">00:00:00</span>
+				<button type="button" id="dock-quick-timer" aria-label="Start timer">▶</button>
+			</div>
+			<button type="button" id="dock-toggle-btn" class="dock-toggle" aria-expanded="false"
+				aria-controls="dock-panel">🛠 KITCHEN TOOLS ▲</button>
+		</div>
+		<div id="dock-panel" class="dock-panel" inert>
+			<div class="dock-panel-inner">
+				<div class="dock-tabs" role="tablist" aria-label="Kitchen tools">
+					<button type="button" id="dock-tab-timer" role="tab" class="active" aria-selected="true"
+						aria-controls="tab-timer">[ TIMER ]</button>
+					<button type="button" id="dock-tab-temperature" role="tab" aria-selected="false"
+						aria-controls="tab-temperature" tabindex="-1">[ TEMP (C/F) ]</button>
+					<button type="button" id="dock-tab-volume" role="tab" aria-selected="false"
+						aria-controls="tab-volume" tabindex="-1">[ VOLUME ]</button>
+				</div>
+				<section id="tab-timer" role="tabpanel" aria-labelledby="dock-tab-timer">
+					<div class="dock-presets">
+						<button type="button" data-add-seconds="60">+1m</button>
+						<button type="button" data-add-seconds="300">+5m</button>
+						<button type="button" data-add-seconds="600">+10m</button>
+					</div>
+					<div id="dock-timer-display" class="dock-timer-display" aria-label="Timer display">00:00:00</div>
+					<div class="dock-timer-actions">
+						<button type="button" id="dock-start">Start</button>
+						<button type="button" id="dock-pause">Pause</button>
+						<button type="button" id="dock-reset">Reset</button>
+					</div>
+				</section>
+				<section id="tab-temperature" role="tabpanel" aria-labelledby="dock-tab-temperature" hidden>
+					<div class="dock-converter">
+						<label>Celsius (°C)<input id="dock-celsius" type="number" step="any" placeholder="0"></label>
+						<span class="conv-arrow" aria-hidden="true">⇄</span>
+						<label>Fahrenheit (°F)<input id="dock-fahrenheit" type="number" step="any"
+								placeholder="32"></label>
+						<img id="dock-thermometer" src="src/images/thermometer_cold.svg" alt="Thermometer">
+					</div>
+				</section>
+				<section id="tab-volume" role="tabpanel" aria-labelledby="dock-tab-volume" hidden>
+					<p class="dock-hint">Enter decimal or fractions (e.g. 1/2, 1.5)</p>
+					<div class="dock-volume-grid">
+						<div>
+							<div class="dock-units" role="group" aria-label="From unit">
+								<button type="button" data-volume-side="from" data-unit="ml">ml</button>
+								<button type="button" data-volume-side="from" data-unit="tbsp">tbsp</button>
+								<button type="button" data-volume-side="from" data-unit="cups" class="active"
+									aria-pressed="true">cups</button>
+								<button type="button" data-volume-side="from" data-unit="tsp">tsp</button>
+							</div>
+							<label><span id="dock-from-unit">cups</span><input type="text" id="dock-volume-from"
+									placeholder="0" autocomplete="off"></label>
+						</div>
+						<div>
+							<div class="dock-units" role="group" aria-label="To unit">
+								<button type="button" data-volume-side="to" data-unit="ml" class="active"
+									aria-pressed="true">ml</button>
+								<button type="button" data-volume-side="to" data-unit="tbsp">tbsp</button>
+								<button type="button" data-volume-side="to" data-unit="cups">cups</button>
+								<button type="button" data-volume-side="to" data-unit="tsp">tsp</button>
+							</div>
+							<label><span id="dock-to-unit">ml</span><input type="text" id="dock-volume-to"
+									placeholder="0" autocomplete="off"></label>
+						</div>
+					</div>
+					<p id="dock-volume-status" role="status"></p>
+				</section>
+			</div>
+		</div>
+	</div>
+
+	<dialog id="dock-timer-popup" aria-labelledby="dock-done-title">
+		<h2 id="dock-done-title">Time's Up!</h2>
+		<p>Overtime: <span id="dock-overtime">00:00:00</span></p>
+		<p id="dock-alarm-status" role="status"></p>
+		<button type="button" id="dock-done">Done</button>
+	</dialog>
+
+	<dialog id="api-modal" aria-labelledby="api-modal-title" aria-describedby="api-key-help">
+		<header>
+			<h2 id="api-modal-title">AI ENGINE SETUP</h2>
+			<button type="button" id="close-api-btn" aria-label="Close API settings">×</button>
+		</header>
+		<form id="api-key-form">
+			<label for="gemini-key-input">Google Gemini API Key</label>
+			<input type="password" id="gemini-key-input" placeholder="Paste Google Gemini API Key" autocomplete="off"
+				autocapitalize="none" spellcheck="false" autofocus>
+			<p id="api-key-help">Stored locally in your browser (localStorage). Never routed to an external proxy.</p>
+			<p id="api-status" role="status" aria-live="polite"></p>
+			<div class="api-actions">
+				<button type="submit" id="save-key-btn">Save Key</button>
+				<button type="button" id="clear-key-btn">Clear</button>
+			</div>
+		</form>
+	</dialog>
+
+	<audio class="timer-sound" src="src/sounds/timer-done.mp3" preload="auto"></audio>
+	<audio class="function-click" src="src/sounds/function-click.mp3" preload="auto"></audio>
+	<audio class="button-sound" src="src/sounds/robot-click.mp3" preload="auto"></audio>
 	<script type="module" src="js/gemini.js"></script>
+	<script src="js/scripts.js" defer></script>
 </body>
 
 </html>

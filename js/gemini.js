@@ -1,200 +1,331 @@
-// === gemini.js — updated ===
-// Frontend caller for your Cloudflare Worker proxy.
-// Expects the Worker to call Google with model `gemini-2.5-flash` on v1beta.
+// ==========================================================================
+// Web Sous-Chef: Token-Optimized Gemini Engine & Split View Controller
+// ==========================================================================
 
-const WORKER_URL = "https://souschef-proxy.marinaxu99.workers.dev/api/gemini";
-const FALLBACK_URL = "https://souschef-gemini-fallback.vercel.app/api/gemini";
+const KEY_STORAGE = "souschef_gemini_key";
+const CACHE_PREFIX = "souschef_recipe_";
 
-// Small helper
-const delay = (ms) => new Promise(r => setTimeout(r, ms));
+// 1. Minimized JSON Schema to prevent verbose field hallucinations
+const recipeSchema = {
+    type: "OBJECT",
+    properties: {
+        title: { type: "STRING" },
+        cuisine: { type: "STRING" },
+        prepTime: { type: "STRING" },
+        servings: { type: "INTEGER" },
+        ingredients: {
+            type: "ARRAY",
+            items: {
+                type: "OBJECT",
+                properties: {
+                    item: { type: "STRING" },
+                    amount: { type: "STRING" },
+                    unit: { type: "STRING" }
+                }
+            }
+        },
+        steps: { type: "ARRAY", items: { type: "STRING" } },
+        youtubeQuery: { type: "STRING" }
+    },
+    required: ["title", "cuisine", "prepTime", "servings", "ingredients", "steps", "youtubeQuery"]
+};
 
-async function askGeminiViaWorker(promptText) {
-	// random style nudge for variety
-	const STYLES = ["Italian", "Mexican", "Thai", "Japanese", "French", "Greek", "Indian", "Korean", "Moroccan", "Vietnamese"];
-	const style = STYLES[Math.floor(Math.random() * STYLES.length)];
+let currentRecipeSteps = [];
+let currentStepIndex = 0;
 
-	const body = {
-		generationConfig: {
-			temperature: 1.1,
-			topP: 0.95,
-			topK: 40
-			// candidateCount omitted (default 1)
-		},
-		contents: [{
-			role: "user",
-			parts: [{
-				text: `${promptText}
+async function askGemini(ingredients, apiKey, cuisine = "All", diet = "Any") {
+    // Session Caching: Avoids duplicate API hits if the user re-enters the same query
+    const cacheKey = `${CACHE_PREFIX}${ingredients.trim().toLowerCase()}_${cuisine}_${diet}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+        try {
+            return JSON.parse(cached);
+        } catch {
+            sessionStorage.removeItem(cacheKey);
+        }
+    }
 
-Extra rules for variety:
-- Make it in ${style} cuisine.
-- If asked again with the same ingredients, change the cuisine, technique, or format (e.g., bowl, wrap, stir-fry, salad).
-- Do NOT repeat the exact same recipe wording as a previous answer.`
-			}]
-		}]
-	};
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
 
-	// Try Worker with quick retries on 429/503 before falling back
-	let lastText = "";
-	for (let attempt = 0; attempt < 3; attempt++) {
-		const resp = await fetch(WORKER_URL, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(body)
-		});
+    const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            generationConfig: {
+                temperature: 0.4,           // Lower temperature prevents meandering, verbose prose
+                maxOutputTokens: 750,       // Hard limit: A standard recipe needs < 500 tokens
+                responseMimeType: "application/json",
+                responseSchema: recipeSchema
+            },
+            systemInstruction: {
+                parts: [{
+                    text: "You are Web Sous-Chef. Generate authentic recipes matching tags. Write concise, actionable instructions. Never output pleasantries or commentary."
+                }]
+            },
+            contents: [{
+                role: "user",
+                parts: [{ text: `Ingredients: ${ingredients}. Cuisine: ${cuisine}. Diet: ${diet}.` }]
+            }]
+        })
+    });
 
-		if (resp.ok) {
-			const data = await resp.json().catch(() => ({}));
-			const parts = data?.candidates?.[0]?.content?.parts || [];
-			const out = parts.map(p => p.text || "").join("\n").trim();
-			return out || "(No text returned)";
-		}
+    if (!response.ok) {
+        throw new Error(`Google Gemini error (${response.status}). Check your API key or quota.`);
+    }
 
-		// read error text for decisions / debugging
-		lastText = await resp.text().catch(() => "");
+    const data = await response.json();
+    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) throw new Error("Gemini returned an empty recipe. Try different ingredients.");
 
-		// Early escape on location restriction
-		if (resp.status === 400 && lastText.includes("User location is not supported")) break;
+    const parsed = JSON.parse(rawText.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, ""));
 
-		// Retry on transient overload
-		if (resp.status === 503 || resp.status === 429) {
-			await delay(400 * (attempt + 1)); // 400ms, then 800ms
-			continue;
-		}
+    // Save valid response to session cache
+    try {
+        sessionStorage.setItem(cacheKey, JSON.stringify(parsed));
+    } catch {
+        // Handle storage quota limits gracefully
+    }
 
-		// Other errors -> fallback
-		break;
-	}
-
-	// Fallback (same body + contract)
-	const fallbackResp = await fetch(FALLBACK_URL, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(body)
-	});
-
-	if (!fallbackResp.ok) {
-		const t = await fallbackResp.text().catch(() => "");
-		throw new Error(`Fallback/API error ${fallbackResp.status}: ${t || lastText}`);
-	}
-
-	const data = await fallbackResp.json().catch(() => ({}));
-	const parts = data?.candidates?.[0]?.content?.parts || [];
-	return parts.map(p => p.text || "").join("\n").trim() || "(No text returned)";
+    return parsed;
 }
 
-// --- UI wiring ---
-document.addEventListener("DOMContentLoaded", function () {
-	const sendBtn = document.querySelector(".send-btn");
-	const input = document.querySelector(".user-input");
-	const chatLog = document.querySelector(".chat-log");
+function renderRecipeCard(targetArea, recipe) {
+    currentRecipeSteps = recipe.steps || [];
+    currentStepIndex = 0;
 
-	// Enter key triggers send
-	input?.addEventListener("keypress", (e) => {
-		if (e.key === "Enter") sendBtn?.click();
-	});
+    const card = document.createElement("article");
+    card.className = "recipe-card";
 
-	if (sendBtn && input && chatLog) {
-		sendBtn.addEventListener("click", async () => {
-			const userText = input.value.trim();
-			if (!userText) return;
+    // Header
+    const header = document.createElement("header");
+    header.className = "recipe-header";
+    header.innerHTML = `
+        <h2>${recipe.title}</h2>
+        <div class="recipe-metadata">
+            <span class="cuisine-badge">${recipe.cuisine}</span>
+            <span>Prep: ${recipe.prepTime}</span>
+            <span>Servings: ${recipe.servings}</span>
+        </div>
+    `;
 
-			// add user bubble
-			const userMsg = document.createElement("div");
-			userMsg.classList.add("user-message");
-			userMsg.textContent = userText;
-			chatLog.appendChild(userMsg);
-			input.value = "";
+    // Action Bar
+    const actions = document.createElement("div");
+    actions.className = "recipe-actions";
 
-			// add bot placeholder
-			const botMsg = document.createElement("div");
-			botMsg.classList.add("bot-message", "loading");
-			botMsg.innerHTML = `<em>thinking</em>`;
-			chatLog.appendChild(botMsg);
-			botMsg.scrollIntoView({ behavior: "smooth", block: "start" });
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "copy-recipe-button";
+    copyBtn.textContent = "Copy Recipe";
 
-			// animated dots
-			let dotCount = 0;
-			const loadingInterval = setInterval(() => {
-				dotCount = (dotCount + 1) % 4;
-				botMsg.innerHTML = `<em>thinking${".".repeat(dotCount)}</em>`;
-			}, 500);
+    const formattedText = `${recipe.title}\nCuisine: ${recipe.cuisine} | Prep: ${recipe.prepTime}\n\nIngredients:\n${recipe.ingredients.map(i => `• ${i.amount || ''} ${i.unit || ''} ${i.item}`).join('\n')}\n\nSteps:\n${recipe.steps.map((s, idx) => `${idx + 1}. ${s}`).join('\n')}`;
 
-			// prevent double-click spam
-			sendBtn.disabled = true;
+    copyBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText(formattedText).then(() => {
+            copyBtn.textContent = "✓ Copied!";
+            setTimeout(() => { copyBtn.textContent = "Copy Recipe"; }, 2000);
+        });
+    });
 
-			try {
-				const prompt = `Generate a simple, fun recipe using only these ingredients: ${userText}.
-Return it in a clear format with:
-1. A creative title
-2. Type of dish
-3. Step-by-step instructions
-Format the instructions in bullet points. Make it easy to copy.`;
+    const ytLink = document.createElement("a");
+    ytLink.className = "yt-search-btn";
+    ytLink.href = `https://www.youtube.com/results?search_query=${encodeURIComponent(recipe.youtubeQuery || recipe.title + " cooking tutorial")}`;
+    ytLink.target = "_blank";
+    ytLink.rel = "noopener";
+    ytLink.textContent = "Watch on YouTube ↗";
 
-				const response = await askGeminiViaWorker(prompt);
+    const focusBtn = document.createElement("button");
+    focusBtn.type = "button";
+    focusBtn.className = "focus-mode-btn";
+    focusBtn.textContent = "Focus Steps ⤢";
+    focusBtn.addEventListener("click", openFocusModal);
 
-				clearInterval(loadingInterval);
-				botMsg.classList.remove("loading");
+    actions.append(copyBtn, ytLink, focusBtn);
 
-				const htmlResponse = response
-					.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // bold
-					.replace(/\n/g, "<br>");                          // line breaks
+    // Ingredients
+    const ingTitle = document.createElement("h3");
+    ingTitle.textContent = "Ingredients";
+    const ingList = document.createElement("dl");
+    ingList.className = "ingredients-grid";
+    recipe.ingredients.forEach(i => {
+        const dt = document.createElement("dt");
+        dt.textContent = `${i.amount || ''} ${i.unit || ''}`;
+        const dd = document.createElement("dd");
+        dd.textContent = i.item;
+        ingList.append(dt, dd);
+    });
 
-				botMsg.innerHTML = `
-          <div class="recipe-text">${htmlResponse}</div>
-          <button class="copy-recipe-button">Copy Recipe</button>
+    // Steps Checklist
+    const stepTitle = document.createElement("h3");
+    stepTitle.textContent = "Directions";
+    const stepList = document.createElement("ol");
+    stepList.className = "recipe-steps";
+    recipe.steps.forEach((step, idx) => {
+        const li = document.createElement("li");
+        li.className = "recipe-step";
+        li.innerHTML = `
+            <label>
+                <input type="checkbox" aria-label="Step ${idx + 1}">
+                <span><strong>${idx + 1}.</strong> ${step}</span>
+            </label>
         `;
+        li.querySelector("input").addEventListener("change", e => {
+            li.classList.toggle("step-done", e.target.checked);
+        });
+        stepList.appendChild(li);
+    });
 
-				const copyButton = botMsg.querySelector(".copy-recipe-button");
-				const recipeText = botMsg.querySelector(".recipe-text");
+    card.append(header, actions, ingTitle, ingList, stepTitle, stepList);
+    targetArea.replaceChildren(card);
+}
 
-				copyButton.addEventListener("click", () => {
-					const textToCopy = recipeText.innerText;
-					navigator.clipboard.writeText(textToCopy)
-						.then(() => {
-							copyButton.textContent = "✓ Copied!";
-							setTimeout(() => { copyButton.textContent = "Copy Recipe"; }, 2000);
-						})
-						.catch(err => {
-							console.error("Copy failed:", err);
-							copyButton.textContent = "✗ Copy Failed";
-						});
-				});
+// Step-by-Step Cooking Modal Logic
+function openFocusModal() {
+    if (!currentRecipeSteps.length) return;
+    const modal = document.getElementById("focus-steps-modal");
+    currentStepIndex = 0;
+    updateFocusModalContent();
+    modal.showModal();
+}
 
-				setTimeout(() => {
-					botMsg.scrollIntoView({ behavior: "smooth", block: "start" });
-				}, 50);
-			} catch (err) {
-				clearInterval(loadingInterval);
-				console.error(err);
-				botMsg.innerHTML = `<em>Something went wrong. Please try again.</em>`;
-			} finally {
-				sendBtn.disabled = false;
-			}
-		});
-	}
-});
+function updateFocusModalContent() {
+    const counter = document.getElementById("focus-modal-step-counter");
+    const text = document.getElementById("focus-modal-step-text");
+    const prevBtn = document.getElementById("focus-prev-btn");
+    const nextBtn = document.getElementById("focus-next-btn");
 
-// --- optional: button click sound ---
+    counter.textContent = `STEP ${currentStepIndex + 1} OF ${currentRecipeSteps.length}`;
+    text.textContent = currentRecipeSteps[currentStepIndex];
+
+    prevBtn.disabled = currentStepIndex === 0;
+    nextBtn.textContent = currentStepIndex === currentRecipeSteps.length - 1 ? "FINISH ✓" : "NEXT →";
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-	const clickSound = document.querySelector(".button-sound");
-	const clickables = document.querySelectorAll("button");
-	if (clickSound) {
-		clickables.forEach(el => {
-			el.addEventListener("click", () => {
-				try { clickSound.currentTime = 0; clickSound.play().catch(() => { }); } catch { }
-			});
-		});
-	}
-});
+    const input = document.querySelector(".user-input");
+    const sendBtn = document.querySelector(".send-btn");
+    const chatLog = document.querySelector(".chat-log");
+    const recipeDisplayArea = document.getElementById("recipe-display-area");
+    const modal = document.getElementById("api-modal");
+    const keyInput = document.getElementById("gemini-key-input");
+    const status = document.getElementById("api-status");
 
-// --- iOS Safari zoom guard ---
-document.addEventListener("touchstart", function (event) {
-	if (event.target.tagName === "INPUT" || event.target.tagName === "TEXTAREA") {
-		const viewport = document.querySelector('meta[name="viewport"]');
-		if (viewport) viewport.setAttribute("content", "width=device-width, initial-scale=1, maximum-scale=1");
-	}
-}, false);
-document.addEventListener("touchend", function () {
-	const viewport = document.querySelector('meta[name="viewport"]');
-	if (viewport) viewport.setAttribute("content", "width=device-width, initial-scale=1");
-}, false);
+    const filterToggleBtn = document.getElementById("filter-toggle-btn");
+    const filterDrawer = document.getElementById("filter-drawer");
+
+    let activeCuisine = "All";
+    let activeDiet = "Any";
+    let isBusy = false;
+
+    // Filter Drawer Toggle
+    filterToggleBtn?.addEventListener("click", () => {
+        const isCollapsed = filterDrawer.classList.toggle("collapsed");
+        filterToggleBtn.textContent = isCollapsed ? "FILTERS ▾" : "FILTERS ▲";
+    });
+
+    // Filter Selection
+    document.querySelectorAll(".filter-pill").forEach(pill => {
+        pill.addEventListener("click", () => {
+            const type = pill.dataset.type;
+            if (type === "cuisine") activeCuisine = pill.dataset.val;
+            else activeDiet = pill.dataset.val;
+
+            document.querySelectorAll(`.filter-pill[data-type="${type}"]`).forEach(p => {
+                const isSelected = p === pill;
+                p.classList.toggle("active", isSelected);
+            });
+        });
+    });
+
+    // Focus Steps Navigation
+    document.getElementById("close-focus-btn")?.addEventListener("click", () => {
+        document.getElementById("focus-steps-modal")?.close();
+    });
+    document.getElementById("focus-prev-btn")?.addEventListener("click", () => {
+        if (currentStepIndex > 0) {
+            currentStepIndex--;
+            updateFocusModalContent();
+        }
+    });
+    document.getElementById("focus-next-btn")?.addEventListener("click", () => {
+        if (currentStepIndex < currentRecipeSteps.length - 1) {
+            currentStepIndex++;
+            updateFocusModalContent();
+        } else {
+            document.getElementById("focus-steps-modal")?.close();
+        }
+    });
+
+    // API Modal Handlers
+    function openModal(msg = "") {
+        if (!modal) return;
+        if (status) status.textContent = msg;
+        if (keyInput) keyInput.value = localStorage.getItem(KEY_STORAGE) || "";
+        modal.showModal();
+    }
+
+    document.getElementById("api-settings-btn")?.addEventListener("click", () => openModal());
+    document.getElementById("close-api-btn")?.addEventListener("click", () => modal?.close());
+
+    document.getElementById("api-key-form")?.addEventListener("submit", e => {
+        e.preventDefault();
+        const val = keyInput.value.trim();
+        if (val) {
+            localStorage.setItem(KEY_STORAGE, val);
+            modal.close();
+            input?.focus();
+        }
+    });
+
+    document.getElementById("clear-key-btn")?.addEventListener("click", () => {
+        localStorage.removeItem(KEY_STORAGE);
+        if (keyInput) keyInput.value = "";
+        if (status) status.textContent = "API key cleared.";
+    });
+
+    // Recipe Generation Trigger
+    async function submitIngredients() {
+        const text = input.value.trim();
+        if (!text || isBusy) return;
+
+        const apiKey = localStorage.getItem(KEY_STORAGE);
+        if (!apiKey) {
+            openModal("Please save your Gemini API key to cook.");
+            return;
+        }
+
+        isBusy = true;
+        sendBtn.disabled = true;
+        input.value = "";
+
+        const userMsg = document.createElement("div");
+        userMsg.className = "user-message";
+        userMsg.textContent = text;
+        chatLog.appendChild(userMsg);
+
+        const botMsg = document.createElement("div");
+        botMsg.className = "bot-message loading";
+        botMsg.textContent = "Sous-Chef is cooking...";
+        chatLog.appendChild(botMsg);
+        botMsg.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+        try {
+            const recipe = await askGemini(text, apiKey, activeCuisine, activeDiet);
+            botMsg.textContent = `✓ Created: ${recipe.title} (See right panel)`;
+            renderRecipeCard(recipeDisplayArea, recipe);
+        } catch (err) {
+            botMsg.textContent = err.message || "Failed to generate recipe.";
+        } finally {
+            isBusy = false;
+            sendBtn.disabled = false;
+            botMsg.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+    }
+
+    sendBtn?.addEventListener("click", submitIngredients);
+    input?.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            submitIngredients();
+        }
+    });
+});
