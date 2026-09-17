@@ -15,12 +15,15 @@
         <nav class="editorial-nav" aria-label="Main navigation">
             <span class="nav-brand-tag">WEB SOUS-CHEF // WORKSPACE</span>
             <div class="nav-actions">
-                <button type="button" id="wake-lock-btn" aria-pressed="false">[ ☼ Keep Awake ]</button>
+                <button type="button" id="wake-lock-btn" class="wake-lock-btn" aria-pressed="false"
+                    title="Toggle screen always on while cooking">
+                    <span class="wake-status-dot"></span>
+                    <span class="wake-label">Screen Always On: OFF</span>
+                </button>
                 <button type="button" id="api-settings-btn" aria-label="API key settings" aria-haspopup="dialog"
                     aria-controls="api-modal">[ ⚙ API Key ]</button>
             </div>
         </nav>
-        <p id="wake-lock-status" role="status" aria-live="polite"></p>
 
         <div class="home-container">
             <div class="intro-container">

@@ -1,10 +1,10 @@
 // ==========================================================================
-// Web Sous-Chef: Core Kitchen Utilities & Dock Controller
+// Web Sous-Chef: Precision Kitchen Utilities & Continuous Zen Chime Engine
 // ==========================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
 	// --------------------------------------------------------------------------
-	// 1. Homepage Thought Bubble Delay
+	// 1. Homepage Thought Bubble
 	// --------------------------------------------------------------------------
 	const bubble = document.querySelector('.thought-bubble');
 	if (bubble) {
@@ -14,10 +14,110 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	// --------------------------------------------------------------------------
-	// 2. Persistent Floating Kitchen Dock Setup
+	// 2. Web Audio API Harmonic Tibetan Chime (Continuous Loop Support)
+	// --------------------------------------------------------------------------
+	let audioCtx = null;
+	let alarmChimeInterval = null;
+
+	function strikeTibetanBell() {
+		try {
+			if (!audioCtx) {
+				audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+			}
+			if (audioCtx.state === 'suspended') {
+				audioCtx.resume();
+			}
+
+			const now = audioCtx.currentTime;
+
+			const partials = [
+				{ freq: 440.0, gain: 0.40, decay: 3.5 },  // Fundamental warm strike
+				{ freq: 880.0, gain: 0.20, decay: 2.8 },  // Resonance overtone
+				{ freq: 1320.0, gain: 0.09, decay: 2.0 }, // Harmonic sparkle
+				{ freq: 1760.0, gain: 0.04, decay: 1.4 }  // High shimmer
+			];
+
+			partials.forEach(p => {
+				const osc = audioCtx.createOscillator();
+				const gainNode = audioCtx.createGain();
+
+				osc.type = "sine";
+				osc.frequency.setValueAtTime(p.freq, now);
+
+				gainNode.gain.setValueAtTime(0.0001, now);
+				gainNode.gain.exponentialRampToValueAtTime(p.gain, now + 0.015);
+				gainNode.gain.exponentialRampToValueAtTime(0.0001, now + p.decay);
+
+				osc.connect(gainNode);
+				gainNode.connect(audioCtx.destination);
+
+				osc.start(now);
+				osc.stop(now + p.decay);
+			});
+		} catch {
+			// Audio policy safety
+		}
+	}
+
+	function startRecurringAlarm() {
+		strikeTibetanBell();
+		if (alarmChimeInterval) clearInterval(alarmChimeInterval);
+		// Rings every 4.2 seconds until user dismisses
+		alarmChimeInterval = setInterval(strikeTibetanBell, 4200);
+	}
+
+	function stopRecurringAlarm() {
+		if (alarmChimeInterval) {
+			clearInterval(alarmChimeInterval);
+			alarmChimeInterval = null;
+		}
+	}
+
+	// --------------------------------------------------------------------------
+	// 3. Rolling Number Animation Engine
+	// --------------------------------------------------------------------------
+	const activeAnimations = new WeakMap();
+
+	function animateNumberChange(inputElement, targetValue, decimals = 1, duration = 380) {
+		if (!inputElement) return;
+
+		if (activeAnimations.has(inputElement)) {
+			cancelAnimationFrame(activeAnimations.get(inputElement));
+		}
+
+		const target = parseFloat(targetValue);
+		if (isNaN(target)) {
+			inputElement.value = '';
+			return;
+		}
+
+		const start = parseFloat(inputElement.value) || 0;
+		const startTime = performance.now();
+
+		function step(currentTime) {
+			const elapsed = currentTime - startTime;
+			const progress = Math.min(elapsed / duration, 1);
+			const ease = 1 - Math.pow(1 - progress, 3);
+			const current = start + (target - start) * ease;
+
+			inputElement.value = current.toFixed(decimals);
+
+			if (progress < 1) {
+				activeAnimations.set(inputElement, requestAnimationFrame(step));
+			} else {
+				inputElement.value = target.toFixed(decimals);
+				activeAnimations.delete(inputElement);
+			}
+		}
+
+		activeAnimations.set(inputElement, requestAnimationFrame(step));
+	}
+
+	// --------------------------------------------------------------------------
+	// 4. Floating Dock Controls
 	// --------------------------------------------------------------------------
 	const dock = document.getElementById('kitchen-dock');
-	if (!dock) return; // Exit cleanly on pages without the kitchen dock
+	if (!dock) return;
 
 	const byId = id => document.getElementById(id);
 	const panel = byId('dock-panel');
@@ -25,11 +125,10 @@ document.addEventListener('DOMContentLoaded', () => {
 	const badge = byId('dock-timer-badge');
 	const display = byId('dock-timer-display');
 	const quickBtn = byId('dock-quick-timer');
+	const quickRepeatBtn = byId('dock-quick-restart');
 	const popup = byId('dock-timer-popup');
-	const overtimeEl = byId('dock-overtime');
-	const alarm = document.querySelector('.timer-sound');
+	const overtimeDisplay = byId('dock-overtime');
 
-	// Toggle Drawer Open / Close
 	function setExpanded(expanded) {
 		dock.classList.toggle('collapsed', !expanded);
 		if (panel) panel.inert = !expanded;
@@ -44,21 +143,18 @@ document.addEventListener('DOMContentLoaded', () => {
 		setExpanded(dock.classList.contains('collapsed'));
 	});
 
-	// Close on Escape key
 	document.addEventListener('keydown', (e) => {
 		if (e.key === 'Escape' && !dock.classList.contains('collapsed')) {
 			setExpanded(false);
 		}
 	});
 
-	// Close when clicking outside of the dock
 	document.addEventListener('click', (e) => {
 		if (!dock.classList.contains('collapsed') && !dock.contains(e.target)) {
 			setExpanded(false);
 		}
 	});
 
-	// Tab Switching inside Dock
 	const tabs = [...dock.querySelectorAll('[role="tab"]')];
 	tabs.forEach(tab => {
 		tab.addEventListener('click', (e) => {
@@ -74,13 +170,21 @@ document.addEventListener('DOMContentLoaded', () => {
 	});
 
 	// --------------------------------------------------------------------------
-	// 3. Smart Timer / Count-Up Stopwatch Engine
+	// 5. Timer Engine with Overtime Tracking & Stacking Modals
 	// --------------------------------------------------------------------------
 	let remainingMs = 0;
+	let initialCountdownPresetMs = 0;
 	let deadline = null;
-	let stopwatchStart = null;
-	let ticker = null;
+	let alarmTargetTimestamp = null; // Stored to track second-by-second overtime
+	let isAlarmActive = false;
+
 	let isStopwatch = false;
+	let stopwatchElapsedMs = 0;
+	let stopwatchStartTime = null;
+	let isStopwatchRunning = false;
+
+	let ticker = null;
+	let timerRollAnimation = null;
 
 	function formatTime(totalSec) {
 		totalSec = Math.max(0, Math.floor(totalSec));
@@ -90,16 +194,36 @@ document.addEventListener('DOMContentLoaded', () => {
 		return `${hrs}:${mins}:${secs}`;
 	}
 
-	function renderDisplay() {
-		if (isStopwatch && stopwatchStart !== null) {
-			const elapsed = Math.floor((Date.now() - stopwatchStart) / 1000);
-			const str = `+${formatTime(elapsed)}`;
+	function setQuickButtonRunning(isRunning) {
+		if (!quickBtn) return;
+		const playIcon = quickBtn.querySelector('.icon-play');
+		const pauseIcon = quickBtn.querySelector('.icon-pause');
+		if (playIcon && pauseIcon) {
+			playIcon.style.display = isRunning ? 'none' : 'block';
+			pauseIcon.style.display = isRunning ? 'block' : 'none';
+		}
+		quickBtn.setAttribute('aria-label', isRunning ? 'Pause timer' : 'Start timer');
+	}
+
+	function renderDisplay(customSec = null) {
+		if (customSec !== null) {
+			const str = formatTime(customSec);
 			if (display) display.textContent = str;
 			if (badge) badge.textContent = str;
-			if (quickBtn) {
-				quickBtn.textContent = 'Ⅱ';
-				quickBtn.setAttribute('aria-label', 'Pause stopwatch');
+			return;
+		}
+
+		if (isStopwatch) {
+			let currentSec = 0;
+			if (isStopwatchRunning && stopwatchStartTime) {
+				currentSec = Math.floor((stopwatchElapsedMs + (Date.now() - stopwatchStartTime)) / 1000);
+			} else {
+				currentSec = Math.floor(stopwatchElapsedMs / 1000);
 			}
+			const str = formatTime(currentSec);
+			if (display) display.textContent = str;
+			if (badge) badge.textContent = str;
+			setQuickButtonRunning(isStopwatchRunning);
 			return;
 		}
 
@@ -107,10 +231,32 @@ document.addEventListener('DOMContentLoaded', () => {
 		const str = formatTime(sec);
 		if (display) display.textContent = str;
 		if (badge) badge.textContent = str;
-		if (quickBtn) {
-			quickBtn.textContent = deadline !== null ? 'Ⅱ' : '▶';
-			quickBtn.setAttribute('aria-label', deadline !== null ? 'Pause timer' : 'Start timer');
+		setQuickButtonRunning(deadline !== null);
+	}
+
+	function rollTimerNumbers(fromMs, toMs, duration = 400) {
+		if (timerRollAnimation) cancelAnimationFrame(timerRollAnimation);
+		const startSec = Math.ceil(fromMs / 1000);
+		const targetSec = Math.ceil(toMs / 1000);
+		const startTime = performance.now();
+
+		function step(now) {
+			const elapsed = now - startTime;
+			const progress = Math.min(elapsed / duration, 1);
+			const ease = 1 - Math.pow(1 - progress, 3);
+			const currentSec = Math.round(startSec + (targetSec - startSec) * ease);
+
+			renderDisplay(currentSec);
+
+			if (progress < 1) {
+				timerRollAnimation = requestAnimationFrame(step);
+			} else {
+				renderDisplay();
+				timerRollAnimation = null;
+			}
 		}
+
+		timerRollAnimation = requestAnimationFrame(step);
 	}
 
 	function tick() {
@@ -119,19 +265,28 @@ document.addEventListener('DOMContentLoaded', () => {
 			return;
 		}
 
+		// Active Alarm Overtime Ticker (Seconds past zero)
+		if (isAlarmActive && alarmTargetTimestamp) {
+			const overtimeSec = Math.floor((Date.now() - alarmTargetTimestamp) / 1000);
+			if (overtimeDisplay) overtimeDisplay.textContent = formatTime(overtimeSec);
+			if (badge) badge.textContent = `+${formatTime(overtimeSec)}`;
+			return;
+		}
+
+		// Standard Countdown
 		if (deadline !== null) {
 			remainingMs = Math.max(0, deadline - Date.now());
 			if (remainingMs === 0) {
 				deadline = null;
-				clearInterval(ticker);
-				ticker = null;
-				if (popup && !popup.open) popup.showModal();
-				if (alarm) {
-					try {
-						alarm.currentTime = 0;
-						alarm.play().catch(() => { });
-					} catch { }
+				isAlarmActive = true;
+				alarmTargetTimestamp = Date.now();
+
+				// Open modal cleanly even if Focus Steps is already open
+				if (popup && !popup.open) {
+					popup.showModal();
 				}
+
+				startRecurringAlarm();
 			}
 		}
 		renderDisplay();
@@ -142,19 +297,22 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	function startTimerOrStopwatch() {
-		// If timer is at 00:00:00 and not running, start an active count-up stopwatch
 		if (remainingMs <= 0 && deadline === null && !isStopwatch) {
 			isStopwatch = true;
-			stopwatchStart = Date.now();
+			isStopwatchRunning = true;
+			stopwatchStartTime = Date.now();
 			ensureTicker();
 			renderDisplay();
 			return;
 		}
 
 		if (isStopwatch) {
-			stopwatchStart = Date.now();
-			ensureTicker();
-			renderDisplay();
+			if (!isStopwatchRunning) {
+				isStopwatchRunning = true;
+				stopwatchStartTime = Date.now();
+				ensureTicker();
+				renderDisplay();
+			}
 			return;
 		}
 
@@ -167,15 +325,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	function pauseTimer() {
 		if (isStopwatch) {
-			isStopwatch = false;
-			stopwatchStart = null;
-			clearInterval(ticker);
-			ticker = null;
-			renderDisplay();
+			if (isStopwatchRunning) {
+				isStopwatchRunning = false;
+				stopwatchElapsedMs += Date.now() - stopwatchStartTime;
+				stopwatchStartTime = null;
+				clearInterval(ticker);
+				ticker = null;
+				renderDisplay();
+			}
 			return;
 		}
 
 		if (deadline !== null) {
+			remainingMs = Math.max(0, deadline - Date.now());
 			deadline = null;
 			clearInterval(ticker);
 			ticker = null;
@@ -183,51 +345,120 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
-	function resetTimer() {
-		isStopwatch = false;
-		stopwatchStart = null;
-		deadline = null;
-		remainingMs = 0;
-		clearInterval(ticker);
-		ticker = null;
-		if (alarm) {
-			alarm.pause();
-			alarm.currentTime = 0;
+	function repeatTimer() {
+		dismissAlarm();
+		if (isStopwatch) {
+			const previousMs = stopwatchElapsedMs + (isStopwatchRunning && stopwatchStartTime ? (Date.now() - stopwatchStartTime) : 0);
+			stopwatchElapsedMs = 0;
+			stopwatchStartTime = Date.now();
+			isStopwatchRunning = true;
+			ensureTicker();
+			rollTimerNumbers(previousMs, 0, 350);
+			return;
 		}
-		if (popup && popup.open) popup.close();
-		renderDisplay();
+
+		if (initialCountdownPresetMs > 0) {
+			const currentMs = remainingMs;
+			clearInterval(ticker);
+			ticker = null;
+			remainingMs = initialCountdownPresetMs;
+			deadline = Date.now() + remainingMs;
+			ensureTicker();
+			rollTimerNumbers(currentMs, initialCountdownPresetMs, 400);
+		}
 	}
 
-	// Timer Controls
+	function dismissAlarm() {
+		stopRecurringAlarm();
+		isAlarmActive = false;
+		alarmTargetTimestamp = null;
+		if (popup && popup.open) popup.close();
+		if (badge) badge.textContent = formatTime(0);
+	}
+
+	function clearTimer() {
+		dismissAlarm();
+		const previousMs = isStopwatch
+			? (stopwatchElapsedMs + (isStopwatchRunning && stopwatchStartTime ? (Date.now() - stopwatchStartTime) : 0))
+			: remainingMs;
+
+		isStopwatch = false;
+		isStopwatchRunning = false;
+		stopwatchStartTime = null;
+		stopwatchElapsedMs = 0;
+		deadline = null;
+		remainingMs = 0;
+		initialCountdownPresetMs = 0;
+		clearInterval(ticker);
+		ticker = null;
+
+		rollTimerNumbers(previousMs, 0, 350);
+	}
+
+	// Global hook for inline and focus step timers
+	window.setSousChefTimer = function (seconds) {
+		dismissAlarm();
+		const oldMs = isStopwatch ? 0 : remainingMs;
+		isStopwatch = false;
+		isStopwatchRunning = false;
+		stopwatchStartTime = null;
+		stopwatchElapsedMs = 0;
+
+		remainingMs = seconds * 1000;
+		initialCountdownPresetMs = remainingMs;
+		deadline = Date.now() + remainingMs;
+
+		ensureTicker();
+		rollTimerNumbers(oldMs, remainingMs, 400);
+
+		if (badge) {
+			badge.style.transition = 'color 0.2s';
+			badge.style.color = '#4ade80';
+			setTimeout(() => { badge.style.color = ''; }, 1200);
+		}
+	};
+
 	byId('dock-start')?.addEventListener('click', startTimerOrStopwatch);
 	byId('dock-pause')?.addEventListener('click', pauseTimer);
-	byId('dock-reset')?.addEventListener('click', resetTimer);
-	byId('dock-done')?.addEventListener('click', resetTimer);
+	byId('dock-restart')?.addEventListener('click', repeatTimer);
+	byId('dock-reset')?.addEventListener('click', clearTimer);
+	byId('dock-done')?.addEventListener('click', clearTimer);
 
 	quickBtn?.addEventListener('click', (e) => {
 		e.stopPropagation();
-		if (deadline !== null || isStopwatch) pauseTimer();
+		if (isAlarmActive) dismissAlarm();
+		else if (deadline !== null || isStopwatchRunning) pauseTimer();
 		else startTimerOrStopwatch();
 	});
 
-	// Preset Buttons (+1m, +5m, +10m) switch to count-down
+	quickRepeatBtn?.addEventListener('click', (e) => {
+		e.stopPropagation();
+		repeatTimer();
+	});
+
 	dock.querySelectorAll('[data-add-seconds]').forEach(btn => {
 		btn.addEventListener('click', () => {
+			dismissAlarm();
+			const oldMs = isStopwatch ? 0 : remainingMs;
 			isStopwatch = false;
-			stopwatchStart = null;
+			isStopwatchRunning = false;
+			stopwatchStartTime = null;
+			stopwatchElapsedMs = 0;
+
 			const addSec = Number(btn.dataset.addSeconds);
 			remainingMs += addSec * 1000;
+			initialCountdownPresetMs = remainingMs;
 			if (deadline !== null) deadline += addSec * 1000;
-			renderDisplay();
+
+			rollTimerNumbers(oldMs, remainingMs, 400);
 		});
 	});
 
 	// --------------------------------------------------------------------------
-	// 4. Temperature Converter (C/F with Hot/Cold Thermometer)
+	// 6. Temperature Converter
 	// --------------------------------------------------------------------------
 	const cInput = byId('dock-celsius');
 	const fInput = byId('dock-fahrenheit');
-	const thermoIcon = byId('dock-thermometer');
 
 	function convertTemp(source, target, isToF) {
 		const val = source.value.trim();
@@ -237,18 +468,14 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 		const num = parseFloat(val);
 		const res = isToF ? (num * 9 / 5) + 32 : (num - 32) * 5 / 9;
-		target.value = res.toFixed(1);
-		if (thermoIcon) {
-			const isBoiling = (isToF ? num : res) >= 100;
-			thermoIcon.src = isBoiling ? 'src/images/thermometer_hot.svg' : 'src/images/thermometer_cold.svg';
-		}
+		animateNumberChange(target, res, 1);
 	}
 
 	cInput?.addEventListener('input', () => convertTemp(cInput, fInput, true));
 	fInput?.addEventListener('input', () => convertTemp(fInput, cInput, false));
 
 	// --------------------------------------------------------------------------
-	// 5. Volume Converter (Fraction-Aware: 1/2, 1 1/2, Decimals)
+	// 7. Volume Converter
 	// --------------------------------------------------------------------------
 	const factors = { ml: 1, tbsp: 14.7868, cups: 236.588, tsp: 4.92892 };
 	const units = { from: 'cups', to: 'ml' };
@@ -282,7 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		const inMl = fromVal * factors[units[activeSide]];
 		const res = inMl / factors[units[targetSide]];
-		targetInput.value = res.toFixed(2);
+		animateNumberChange(targetInput, res, 2);
 	}
 
 	['from', 'to'].forEach(side => {

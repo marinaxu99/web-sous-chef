@@ -5,7 +5,7 @@
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta name="description" content="Generate recipes from your ingredients with Google Gemini." />
+	<meta name="description" content="Web Sous-Chef: Minimalist cooking assistant and kitchen workspace." />
 	<title>Web Sous-Chef</title>
 	<link href="css/style.css" rel="stylesheet">
 </head>
@@ -15,33 +15,48 @@
 		<nav class="editorial-nav" aria-label="Main navigation">
 			<a class="navigation" href="index.html">[ ← Home ]</a>
 			<div class="nav-actions">
-				<button type="button" id="wake-lock-btn" aria-pressed="false">[ ☼ Keep Awake ]</button>
+				<button type="button" id="wake-lock-btn" class="wake-lock-btn" aria-pressed="false"
+					title="Toggle screen always on while cooking">
+					<span class="wake-status-dot"></span>
+					<span class="wake-label">Screen Always On: OFF</span>
+				</button>
 				<button type="button" id="api-settings-btn" aria-label="API key settings" aria-haspopup="dialog"
 					aria-controls="api-modal">[ ⚙ API Key ]</button>
 			</div>
 		</nav>
-		<p id="wake-lock-status" role="status" aria-live="polite"></p>
+
+		<!-- Mobile Segmented View Switcher (Hidden on Desktop) -->
+		<div class="mobile-view-switcher" role="tablist" aria-label="Mobile workspace view">
+			<button type="button" id="switch-to-chat" class="view-switch-btn active" role="tab" aria-selected="true"
+				aria-controls="chat-panel">
+				💬 1. IDEAS
+			</button>
+			<button type="button" id="switch-to-recipe" class="view-switch-btn" role="tab" aria-selected="false"
+				aria-controls="recipe-display-area">
+				🍳 2. RECIPE
+			</button>
+		</div>
 
 		<!-- Two-Column Kitchen Workspace -->
-		<div class="kitchen-workspace">
+		<div class="kitchen-workspace" data-active-view="chat">
 
-			<!-- Left Side: Chat & Inputs -->
-			<section class="chat-section">
+			<!-- Left Side: Chat & Ideation Hub -->
+			<section class="chat-section" id="chat-panel">
 				<div class="chat-header">
 					<h1>AI Recipe Generator</h1>
 					<div class="chat-robot">
 						<img src="src/images/robot-head.svg" alt="robot head icon">
-						<p>Chef! What ingredients do you have today?</p>
+						<p id="robot-dialogue">Chef! What ingredients do you have today?</p>
 					</div>
 				</div>
 
 				<div class="chat-log" role="log" aria-label="Recipe conversation" aria-live="polite"></div>
 
-				<!-- Anchored Bottom Bar with Filter Dropdown -->
+				<!-- Anchored Bottom Input Area with Filter Drawer -->
 				<div class="chat-user-dock">
 					<div id="filter-drawer" class="filter-drawer collapsed">
-						<div class="filter-group">
-							<span class="filter-label">Cuisine</span>
+						<div class="filter-row">
+							<span class="filter-category-label">Cuisine:</span>
 							<div class="pills-row">
 								<button type="button" class="filter-pill active" data-type="cuisine"
 									data-val="All">All</button>
@@ -57,8 +72,8 @@
 									data-val="Western">Western</button>
 							</div>
 						</div>
-						<div class="filter-group">
-							<span class="filter-label">Diet</span>
+						<div class="filter-row">
+							<span class="filter-category-label">Diet:</span>
 							<div class="pills-row">
 								<button type="button" class="filter-pill active" data-type="diet"
 									data-val="Any">Any</button>
@@ -87,37 +102,95 @@
 			<!-- Right Side: Active Recipe Sheet -->
 			<section class="recipe-section" id="recipe-display-area">
 				<div class="empty-recipe-state">
-					<p class="empty-title">NO RECIPE GENERATED YET</p>
-					<p class="empty-sub">Type ingredients on the left and select cuisine tags to build your recipe card.
-					</p>
+					<p class="empty-title">NO RECIPE SELECTED YET</p>
+					<p class="empty-sub">Enter ingredients on the left. Sous-Chef will brainstorm 3 directions for you
+						to choose from.</p>
 				</div>
 			</section>
 		</div>
 	</main>
 
-	<!-- Step-by-Step Cooking Focus Modal -->
-	<dialog id="focus-steps-modal" class="focus-steps-modal">
+	<!-- Upgraded Step-by-Step Focus Modal with Progress Bar & Pro-Tips -->
+	<dialog id="focus-steps-modal" class="focus-steps-modal" aria-labelledby="focus-modal-step-counter">
+		<div class="focus-modal-progress" aria-hidden="true">
+			<div id="focus-progress-fill" class="focus-progress-fill"></div>
+		</div>
 		<div class="focus-modal-content">
 			<header class="focus-modal-header">
-				<span id="focus-modal-step-counter">STEP 1 OF 5</span>
-				<button type="button" id="close-focus-btn">✕ CLOSE</button>
+				<div class="focus-header-meta">
+					<span id="focus-modal-step-counter" class="focus-counter-tag">STEP 1 OF 5</span>
+					<span id="focus-modal-action-badge" class="focus-action-tag">PREP</span>
+				</div>
+				<button type="button" id="close-focus-btn" class="focus-close-btn" aria-label="Close focus mode">✕
+					CLOSE</button>
 			</header>
+
 			<div class="focus-modal-body">
-				<p id="focus-modal-step-text">Heat wok with 1 tablespoon vegetable oil until smoking.</p>
+				<p id="focus-modal-step-text" class="focus-instruction-text">Pat shrimp dry and mince aromatics.</p>
+				<div id="focus-modal-tip-container" class="focus-tip-container" hidden>
+					<span class="focus-tip-badge">💡 PRO-TIP</span>
+					<p id="focus-modal-tip-text" class="focus-tip-text"></p>
+				</div>
+				<div id="focus-modal-timer-container" class="focus-timer-container" hidden>
+					<button type="button" id="focus-step-timer-btn" class="focus-timer-btn">⏱ Start Step Timer</button>
+				</div>
 			</div>
+
 			<footer class="focus-modal-footer">
-				<button type="button" id="focus-prev-btn">← PREV</button>
-				<button type="button" id="focus-next-btn">NEXT →</button>
+				<button type="button" id="focus-prev-btn" class="focus-nav-btn">← PREV</button>
+				<div class="focus-keys-hint">Use ← → arrow keys to flip</div>
+				<button type="button" id="focus-next-btn" class="focus-nav-btn primary">NEXT →</button>
 			</footer>
 		</div>
 	</dialog>
 
-	<!-- Persistent Collapsed Bottom Dock -->
+	<!-- Redesigned High-Contrast Alert Box: Time Past Target (Overtime) -->
+	<dialog id="dock-timer-popup" class="kitchen-timer-alert-dialog" aria-labelledby="dock-done-title">
+		<div class="alert-dialog-inner">
+			<div class="alert-bell-pulse" aria-hidden="true">
+				<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2"
+					stroke-linecap="round" stroke-linejoin="round">
+					<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+					<path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+				</svg>
+			</div>
+			<h2 id="dock-done-title" class="alert-title">TIMER COMPLETE</h2>
+			<p class="alert-subtitle">Chime is sounding. Dish has reached target time.</p>
+
+			<div class="alert-overtime-card">
+				<span class="overtime-label">
+					<span class="overtime-red-dot"></span> TIME PAST TARGET
+				</span>
+				<span id="dock-overtime" class="overtime-number">00:00:00</span>
+			</div>
+
+			<button type="button" id="dock-done" class="alert-dismiss-btn">✓ DISMISS & STOP CHIME</button>
+		</div>
+	</dialog>
+
+	<!-- Persistent Floating Dock -->
 	<div id="kitchen-dock" class="kitchen-dock collapsed">
 		<div class="dock-handle">
 			<div class="dock-timer-summary">
 				<span id="dock-timer-badge" aria-label="Timer remaining">00:00:00</span>
-				<button type="button" id="dock-quick-timer" aria-label="Start timer">▶</button>
+				<button type="button" id="dock-quick-timer" class="dock-icon-btn" aria-label="Start timer"
+					title="Start / Stop">
+					<svg class="icon-play" viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+						<polygon points="6,4 20,12 6,20"></polygon>
+					</svg>
+					<svg class="icon-pause" viewBox="0 0 24 24" width="13" height="13" fill="currentColor"
+						style="display:none;">
+						<rect x="5" y="4" width="4" height="16"></rect>
+						<rect x="15" y="4" width="4" height="16"></rect>
+					</svg>
+				</button>
+				<button type="button" id="dock-quick-restart" class="dock-icon-btn" aria-label="Repeat timer"
+					title="Repeat">
+					<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"
+						stroke-linecap="round" stroke-linejoin="round">
+						<path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"></path>
+					</svg>
+				</button>
 			</div>
 			<button type="button" id="dock-toggle-btn" class="dock-toggle" aria-expanded="false"
 				aria-controls="dock-panel">🛠 KITCHEN TOOLS ▲</button>
@@ -132,7 +205,9 @@
 					<button type="button" id="dock-tab-volume" role="tab" aria-selected="false"
 						aria-controls="tab-volume" tabindex="-1">[ VOLUME ]</button>
 				</div>
-				<section id="tab-timer" role="tabpanel" aria-labelledby="dock-tab-timer">
+
+				<!-- Tab 1: Timer -->
+				<section id="tab-timer" class="dock-tabpanel" role="tabpanel" aria-labelledby="dock-tab-timer">
 					<div class="dock-presets">
 						<button type="button" data-add-seconds="60">+1m</button>
 						<button type="button" data-add-seconds="300">+5m</button>
@@ -141,58 +216,71 @@
 					<div id="dock-timer-display" class="dock-timer-display" aria-label="Timer display">00:00:00</div>
 					<div class="dock-timer-actions">
 						<button type="button" id="dock-start">Start</button>
-						<button type="button" id="dock-pause">Pause</button>
-						<button type="button" id="dock-reset">Reset</button>
+						<button type="button" id="dock-pause">Stop</button>
+						<button type="button" id="dock-restart">Repeat</button>
+						<button type="button" id="dock-reset">Clear</button>
 					</div>
 				</section>
-				<section id="tab-temperature" role="tabpanel" aria-labelledby="dock-tab-temperature" hidden>
-					<div class="dock-converter">
-						<label>Celsius (°C)<input id="dock-celsius" type="number" step="any" placeholder="0"></label>
-						<span class="conv-arrow" aria-hidden="true">⇄</span>
-						<label>Fahrenheit (°F)<input id="dock-fahrenheit" type="number" step="any"
-								placeholder="32"></label>
-						<img id="dock-thermometer" src="src/images/thermometer_cold.svg" alt="Thermometer">
+
+				<!-- Tab 2: Temperature Converter -->
+				<section id="tab-temperature" class="dock-tabpanel" role="tabpanel"
+					aria-labelledby="dock-tab-temperature" hidden>
+					<div class="dock-temp-card">
+						<div class="temp-input-pod">
+							<span class="temp-label">Celsius (°C)</span>
+							<input id="dock-celsius" type="number" step="any" placeholder="0">
+						</div>
+						<div class="temp-divider">⇄</div>
+						<div class="temp-input-pod">
+							<span class="temp-label">Fahrenheit (°F)</span>
+							<input id="dock-fahrenheit" type="number" step="any" placeholder="32">
+						</div>
 					</div>
 				</section>
-				<section id="tab-volume" role="tabpanel" aria-labelledby="dock-tab-volume" hidden>
-					<p class="dock-hint">Enter decimal or fractions (e.g. 1/2, 1.5)</p>
-					<div class="dock-volume-grid">
-						<div>
-							<div class="dock-units" role="group" aria-label="From unit">
-								<button type="button" data-volume-side="from" data-unit="ml">ml</button>
-								<button type="button" data-volume-side="from" data-unit="tbsp">tbsp</button>
-								<button type="button" data-volume-side="from" data-unit="cups" class="active"
-									aria-pressed="true">cups</button>
-								<button type="button" data-volume-side="from" data-unit="tsp">tsp</button>
+
+				<!-- Tab 3: Volume Converter -->
+				<section id="tab-volume" class="dock-tabpanel" role="tabpanel" aria-labelledby="dock-tab-volume" hidden>
+					<div class="dock-volume-container">
+						<p class="dock-hint">Enter decimals (1.5) or fractions (1/2, 3/4)</p>
+						<div class="dock-volume-pods">
+							<div class="volume-pod">
+								<div class="dock-units" role="group" aria-label="From unit">
+									<button type="button" data-volume-side="from" data-unit="ml">ml</button>
+									<button type="button" data-volume-side="from" data-unit="tbsp">tbsp</button>
+									<button type="button" data-volume-side="from" data-unit="cups" class="active"
+										aria-pressed="true">cups</button>
+									<button type="button" data-volume-side="from" data-unit="tsp">tsp</button>
+								</div>
+								<div class="vol-input-wrap">
+									<input type="text" id="dock-volume-from" placeholder="0" autocomplete="off">
+									<span id="dock-from-unit" class="vol-unit-badge">cups</span>
+								</div>
 							</div>
-							<label><span id="dock-from-unit">cups</span><input type="text" id="dock-volume-from"
-									placeholder="0" autocomplete="off"></label>
-						</div>
-						<div>
-							<div class="dock-units" role="group" aria-label="To unit">
-								<button type="button" data-volume-side="to" data-unit="ml" class="active"
-									aria-pressed="true">ml</button>
-								<button type="button" data-volume-side="to" data-unit="tbsp">tbsp</button>
-								<button type="button" data-volume-side="to" data-unit="cups">cups</button>
-								<button type="button" data-volume-side="to" data-unit="tsp">tsp</button>
+
+							<div class="volume-arrow">⇄</div>
+
+							<div class="volume-pod">
+								<div class="dock-units" role="group" aria-label="To unit">
+									<button type="button" data-volume-side="to" data-unit="ml" class="active"
+										aria-pressed="true">ml</button>
+									<button type="button" data-volume-side="to" data-unit="tbsp">tbsp</button>
+									<button type="button" data-volume-side="to" data-unit="cups">cups</button>
+									<button type="button" data-volume-side="to" data-unit="tsp">tsp</button>
+								</div>
+								<div class="vol-input-wrap">
+									<input type="text" id="dock-volume-to" placeholder="0" autocomplete="off">
+									<span id="dock-to-unit" class="vol-unit-badge">ml</span>
+								</div>
 							</div>
-							<label><span id="dock-to-unit">ml</span><input type="text" id="dock-volume-to"
-									placeholder="0" autocomplete="off"></label>
 						</div>
+						<p id="dock-volume-status" role="status"></p>
 					</div>
-					<p id="dock-volume-status" role="status"></p>
 				</section>
 			</div>
 		</div>
 	</div>
 
-	<dialog id="dock-timer-popup" aria-labelledby="dock-done-title">
-		<h2 id="dock-done-title">Time's Up!</h2>
-		<p>Overtime: <span id="dock-overtime">00:00:00</span></p>
-		<p id="dock-alarm-status" role="status"></p>
-		<button type="button" id="dock-done">Done</button>
-	</dialog>
-
+	<!-- API Key Setup Modal -->
 	<dialog id="api-modal" aria-labelledby="api-modal-title" aria-describedby="api-key-help">
 		<header>
 			<h2 id="api-modal-title">AI ENGINE SETUP</h2>
@@ -211,9 +299,6 @@
 		</form>
 	</dialog>
 
-	<audio class="timer-sound" src="src/sounds/timer-done.mp3" preload="auto"></audio>
-	<audio class="function-click" src="src/sounds/function-click.mp3" preload="auto"></audio>
-	<audio class="button-sound" src="src/sounds/robot-click.mp3" preload="auto"></audio>
 	<script type="module" src="js/gemini.js"></script>
 	<script src="js/scripts.js" defer></script>
 </body>
