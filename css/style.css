@@ -183,6 +183,108 @@ input[type=number] {
 }
 
 /* ==========================================================================
+   Home Screen & Thought Bubble Guardrails
+   ========================================================================== */
+.home-page {
+	background: #ffffff;
+	overflow: hidden;
+}
+
+.home-page .home-container {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 2rem;
+}
+
+.intro-container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	position: relative;
+	gap: 1.5rem;
+	text-align: center;
+	max-width: 480px;
+	margin: auto;
+}
+
+.robot-link {
+	display: block;
+	width: clamp(140px, 22vw, 220px);
+	transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.robot-link:hover {
+	transform: translateY(-8px) scale(1.03);
+}
+
+.robot-hero-img,
+.robot-click {
+	width: 100%;
+	height: auto;
+	display: block;
+}
+
+.thought-bubble-container {
+	position: absolute;
+	top: -45px;
+	left: clamp(-50px, -6vw, -30px);
+	right: auto;
+	width: 86px;
+	max-width: 86px;
+	height: auto;
+	cursor: pointer;
+	z-index: 10;
+	transition: transform 0.2s ease;
+}
+
+.thought-bubble-container:hover {
+	transform: scale(1.08) translateY(-2px);
+}
+
+.thought-bubble {
+	width: 100% !important;
+	max-width: 86px !important;
+	height: auto !important;
+	display: block;
+	object-fit: contain;
+}
+
+.editorial-titles,
+.web-name {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	align-items: center;
+}
+
+.web-title {
+	font-family: var(--font-brand);
+	font-size: 1.75rem;
+	line-height: 1.2;
+	letter-spacing: 0.5px;
+}
+
+.web-subtitle {
+	font-family: var(--font-reading);
+	font-size: 0.85rem;
+	color: #666666;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+
+.home-credit {
+	padding: 1.25rem;
+	text-align: center;
+	font-family: var(--font-tech);
+	font-size: 0.72rem;
+	border-top: 1px solid #000000;
+	background: #ffffff;
+}
+
+/* ==========================================================================
    2-COLUMN KITCHEN WORKSPACE ARCHITECTURE
    ========================================================================== */
 .kitchen-workspace {
@@ -904,7 +1006,6 @@ input[type=number] {
 	width: 100%;
 	box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
 	z-index: 2000 !important;
-	/* Always sits above focus modal */
 }
 
 .kitchen-timer-alert-dialog::backdrop {
@@ -933,7 +1034,7 @@ input[type=number] {
 	justify-content: center;
 	color: #ff4d4f;
 	margin-bottom: 0.25rem;
-	animation: bellRattle 1.4s infinite ease-in-out;
+	animation: bellRattle 2.5s infinite ease-in-out;
 }
 
 @keyframes bellRattle {
@@ -943,23 +1044,19 @@ input[type=number] {
 		transform: scale(1) rotate(0deg);
 	}
 
-	15% {
-		transform: scale(1.08) rotate(-12deg);
+	4% {
+		transform: scale(1.06) rotate(-8deg);
 	}
 
-	30% {
-		transform: scale(1.08) rotate(12deg);
+	8% {
+		transform: scale(1.06) rotate(8deg);
 	}
 
-	45% {
-		transform: scale(1.08) rotate(-8deg);
+	12% {
+		transform: scale(1.04) rotate(-4deg);
 	}
 
-	60% {
-		transform: scale(1.04) rotate(4deg);
-	}
-
-	75% {
+	16% {
 		transform: scale(1) rotate(0deg);
 	}
 }
@@ -979,7 +1076,6 @@ input[type=number] {
 	margin: 0;
 }
 
-/* Time Past Target (Overtime) Card */
 .alert-overtime-card {
 	width: 100%;
 	background: #000000;

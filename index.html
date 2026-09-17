@@ -5,65 +5,34 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Web Sous-Chef: Your intelligent cooking assistant and kitchen workspace." />
+    <meta name="description" content="Web Sous-Chef: Precision kitchen workspace." />
     <title>Web Sous-Chef</title>
     <link href="css/style.css" rel="stylesheet">
 </head>
 
 <body class="home-page">
     <main>
-        <nav class="editorial-nav" aria-label="Main navigation">
-            <span class="nav-brand-tag">WEB SOUS-CHEF // WORKSPACE</span>
-            <div class="nav-actions">
-                <button type="button" id="wake-lock-btn" class="wake-lock-btn" aria-pressed="false"
-                    title="Toggle screen always on while cooking">
-                    <span class="wake-status-dot"></span>
-                    <span class="wake-label">Screen Always On: OFF</span>
-                </button>
-                <button type="button" id="api-settings-btn" aria-label="API key settings" aria-haspopup="dialog"
-                    aria-controls="api-modal">[ ⚙ API Key ]</button>
-            </div>
-        </nav>
-
         <div class="home-container">
             <div class="intro-container">
-                <a class="thought-bubble-container" href="airecipe.html" aria-label="Open kitchen workspace">
-                    <img class="thought-bubble" src="src/images/thought_bubble.svg" alt="Click to cook">
+                <a href="airecipe.html" class="thought-bubble-container" aria-label="Open Sous-Chef Recipe Generator">
+                    <img src="src/images/thought_bubble.svg" class="thought-bubble"
+                        alt="Thought bubble link to recipe generator">
                 </a>
-                <a class="robot-link" href="airecipe.html" aria-label="Open kitchen workspace">
-                    <img class="robot-click" src="src/images/home_robot.svg" alt="Sous-Chef robot">
+                <a href="airecipe.html" class="robot-link" aria-label="Enter Web Sous-Chef Kitchen">
+                    <img src="src/images/home_robot.svg" class="robot-hero-img"
+                        alt="Robot Sous-Chef mascot illustration">
                 </a>
-                <div class="web-name">
-                    <h1 class="web-title">Web Sous-Chef</h1>
-                    <h2 class="web-subtitle">your cooking assistant</h2>
+                <div class="editorial-titles">
+                    <h1 class="web-title">WEB SOUS-CHEF</h1>
+                    <p class="web-subtitle">A Calm, Focused Culinary Companion</p>
                 </div>
             </div>
         </div>
+        <footer class="home-credit">
+            <p>[ WEB SOUS-CHEF WORKSPACE • POWERED BY GEMINI ]</p>
+        </footer>
     </main>
-
-    <footer class="home-credit">Made by Marina Mingnan Xu</footer>
-
-    <dialog id="api-modal" aria-labelledby="api-modal-title" aria-describedby="api-key-help">
-        <header>
-            <h2 id="api-modal-title">AI ENGINE SETUP</h2>
-            <button type="button" id="close-api-btn" aria-label="Close API settings">×</button>
-        </header>
-        <form id="api-key-form">
-            <label for="gemini-key-input">Google Gemini API Key</label>
-            <input type="password" id="gemini-key-input" placeholder="Paste Google Gemini API Key" autocomplete="off"
-                autocapitalize="none" spellcheck="false" autofocus>
-            <p id="api-key-help">Stored locally in your browser (localStorage). Never routed to an external proxy.</p>
-            <p id="api-status" role="status" aria-live="polite"></p>
-            <div class="api-actions">
-                <button type="submit" id="save-key-btn">Save Key</button>
-                <button type="button" id="clear-key-btn">Clear</button>
-            </div>
-        </form>
-    </dialog>
-
-    <audio class="button-sound" src="src/sounds/robot-click.mp3" preload="auto"></audio>
-    <script src="js/scripts.js"></script>
-    <script type="module" src="js/gemini.js"></script>
+    <script src="js/scripts.js" defer></script>
 </body>
 
 </html>

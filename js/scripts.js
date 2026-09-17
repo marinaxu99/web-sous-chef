@@ -2,10 +2,32 @@
 // Web Sous-Chef: Precision Kitchen Utilities & Continuous Zen Chime Engine
 // ==========================================================================
 
+let audioCtx = null;
+let alarmChimeInterval = null;
+
+// Safe, unified AudioContext accessor with automatic unlock & resume
+function getAudioContext() {
+	if (!audioCtx) {
+		const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+		if (AudioContextClass) {
+			audioCtx = new AudioContextClass();
+		}
+	}
+	if (audioCtx && audioCtx.state === 'suspended') {
+		audioCtx.resume().catch(() => { });
+	}
+	return audioCtx;
+}
+
+// Automatically unlocks browser audio policies on the cook's very first interaction
+['pointerdown', 'keydown', 'touchstart'].forEach(eventType => {
+	window.addEventListener(eventType, () => {
+		getAudioContext();
+	}, { once: true, passive: true });
+});
+
 document.addEventListener('DOMContentLoaded', () => {
-	// --------------------------------------------------------------------------
-	// 1. Homepage Thought Bubble
-	// --------------------------------------------------------------------------
+	// Thought bubble subtle animation on home screen
 	const bubble = document.querySelector('.thought-bubble');
 	if (bubble) {
 		setTimeout(() => {
@@ -13,57 +35,62 @@ document.addEventListener('DOMContentLoaded', () => {
 		}, 2000);
 	}
 
-	// --------------------------------------------------------------------------
-	// 2. Web Audio API Harmonic Tibetan Chime (Continuous Loop Support)
-	// --------------------------------------------------------------------------
-	let audioCtx = null;
-	let alarmChimeInterval = null;
-
-	function strikeTibetanBell() {
+	// Pure Web Audio API: Calm Dual-Tone Mallet Chime (Harmonic & Grounded)
+	function playCalmTwoToneChime() {
 		try {
-			if (!audioCtx) {
-				audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-			}
-			if (audioCtx.state === 'suspended') {
-				audioCtx.resume();
-			}
+			const ctx = getAudioContext();
+			if (!ctx) return;
 
-			const now = audioCtx.currentTime;
+			const now = ctx.currentTime;
 
-			const partials = [
-				{ freq: 440.0, gain: 0.40, decay: 3.5 },  // Fundamental warm strike
-				{ freq: 880.0, gain: 0.20, decay: 2.8 },  // Resonance overtone
-				{ freq: 1320.0, gain: 0.09, decay: 2.0 }, // Harmonic sparkle
-				{ freq: 1760.0, gain: 0.04, decay: 1.4 }  // High shimmer
+			// Two warm melodic pitches: D5 (587.33 Hz) -> A5 (880.00 Hz)
+			const notes = [
+				{ timeOffset: 0.00, fundamental: 587.33, gain: 0.35, decay: 1.8 },
+				{ timeOffset: 0.18, fundamental: 880.00, gain: 0.28, decay: 2.2 }
 			];
 
-			partials.forEach(p => {
-				const osc = audioCtx.createOscillator();
-				const gainNode = audioCtx.createGain();
+			notes.forEach(note => {
+				const strikeTime = now + note.timeOffset;
 
-				osc.type = "sine";
-				osc.frequency.setValueAtTime(p.freq, now);
+				// Harmonics for a rich, warm mallet / chime body
+				const partials = [
+					{ mult: 1.0, gainScale: 1.00 }, // Fundamental
+					{ mult: 2.0, gainScale: 0.35 }, // Octave overtone
+					{ mult: 3.0, gainScale: 0.12 }  // Sparkle tone
+				];
 
-				gainNode.gain.setValueAtTime(0.0001, now);
-				gainNode.gain.exponentialRampToValueAtTime(p.gain, now + 0.015);
-				gainNode.gain.exponentialRampToValueAtTime(0.0001, now + p.decay);
+				partials.forEach(p => {
+					const osc = ctx.createOscillator();
+					const gainNode = ctx.createGain();
 
-				osc.connect(gainNode);
-				gainNode.connect(audioCtx.destination);
+					osc.type = "sine";
+					osc.frequency.setValueAtTime(note.fundamental * p.mult, strikeTime);
 
-				osc.start(now);
-				osc.stop(now + p.decay);
+					// Gentle acoustic attack envelope (no harsh click)
+					gainNode.gain.setValueAtTime(0.0001, strikeTime);
+					gainNode.gain.exponentialRampToValueAtTime(note.gain * p.gainScale, strikeTime + 0.02);
+					gainNode.gain.exponentialRampToValueAtTime(0.0001, strikeTime + note.decay);
+
+					osc.connect(gainNode);
+					gainNode.connect(ctx.destination);
+
+					osc.start(strikeTime);
+					osc.stop(strikeTime + note.decay);
+				});
 			});
-		} catch {
-			// Audio policy safety
+		} catch (err) {
+			console.warn("Audio strike suppressed:", err);
 		}
 	}
 
+	// Expose test helper to console
+	window.testSousChefChime = playCalmTwoToneChime;
+
 	function startRecurringAlarm() {
-		strikeTibetanBell();
+		playCalmTwoToneChime();
 		if (alarmChimeInterval) clearInterval(alarmChimeInterval);
-		// Rings every 4.2 seconds until user dismisses
-		alarmChimeInterval = setInterval(strikeTibetanBell, 4200);
+		// Consistent 2.5s cadence: audible & noticeable without panic
+		alarmChimeInterval = setInterval(playCalmTwoToneChime, 2500);
 	}
 
 	function stopRecurringAlarm() {
@@ -73,9 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 
-	// --------------------------------------------------------------------------
-	// 3. Rolling Number Animation Engine
-	// --------------------------------------------------------------------------
+	// Rolling visual animation for numeric converters
 	const activeAnimations = new WeakMap();
 
 	function animateNumberChange(inputElement, targetValue, decimals = 1, duration = 380) {
@@ -113,9 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		activeAnimations.set(inputElement, requestAnimationFrame(step));
 	}
 
-	// --------------------------------------------------------------------------
-	// 4. Floating Dock Controls
-	// --------------------------------------------------------------------------
+	// Floating Kitchen Dock Setup
 	const dock = document.getElementById('kitchen-dock');
 	if (!dock) return;
 
@@ -169,13 +192,11 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	});
 
-	// --------------------------------------------------------------------------
-	// 5. Timer Engine with Overtime Tracking & Stacking Modals
-	// --------------------------------------------------------------------------
+	// Timer & Stopwatch State
 	let remainingMs = 0;
 	let initialCountdownPresetMs = 0;
 	let deadline = null;
-	let alarmTargetTimestamp = null; // Stored to track second-by-second overtime
+	let alarmTargetTimestamp = null;
 	let isAlarmActive = false;
 
 	let isStopwatch = false;
@@ -265,7 +286,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			return;
 		}
 
-		// Active Alarm Overtime Ticker (Seconds past zero)
 		if (isAlarmActive && alarmTargetTimestamp) {
 			const overtimeSec = Math.floor((Date.now() - alarmTargetTimestamp) / 1000);
 			if (overtimeDisplay) overtimeDisplay.textContent = formatTime(overtimeSec);
@@ -273,7 +293,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			return;
 		}
 
-		// Standard Countdown
 		if (deadline !== null) {
 			remainingMs = Math.max(0, deadline - Date.now());
 			if (remainingMs === 0) {
@@ -281,7 +300,6 @@ document.addEventListener('DOMContentLoaded', () => {
 				isAlarmActive = true;
 				alarmTargetTimestamp = Date.now();
 
-				// Open modal cleanly even if Focus Steps is already open
 				if (popup && !popup.open) {
 					popup.showModal();
 				}
@@ -395,7 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		rollTimerNumbers(previousMs, 0, 350);
 	}
 
-	// Global hook for inline and focus step timers
+	// Public hook for gemini.js step timer buttons
 	window.setSousChefTimer = function (seconds) {
 		dismissAlarm();
 		const oldMs = isStopwatch ? 0 : remainingMs;
@@ -418,6 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	};
 
+	// Dock control listeners
 	byId('dock-start')?.addEventListener('click', startTimerOrStopwatch);
 	byId('dock-pause')?.addEventListener('click', pauseTimer);
 	byId('dock-restart')?.addEventListener('click', repeatTimer);
@@ -454,9 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	});
 
-	// --------------------------------------------------------------------------
-	// 6. Temperature Converter
-	// --------------------------------------------------------------------------
+	// Temperature Converter
 	const cInput = byId('dock-celsius');
 	const fInput = byId('dock-fahrenheit');
 
@@ -474,9 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	cInput?.addEventListener('input', () => convertTemp(cInput, fInput, true));
 	fInput?.addEventListener('input', () => convertTemp(fInput, cInput, false));
 
-	// --------------------------------------------------------------------------
-	// 7. Volume Converter
-	// --------------------------------------------------------------------------
+	// Volume Converter (Decimals & Fractions)
 	const factors = { ml: 1, tbsp: 14.7868, cups: 236.588, tsp: 4.92892 };
 	const units = { from: 'cups', to: 'ml' };
 	let activeSide = 'from';
