@@ -197,13 +197,14 @@ function homeView() {
   return `<div class="home">
     <section class="hero">
       <div class="hero-robot">
-        ${bubble("What are we cooking, chef?", { size: "lg", tail: "right" })}
         ${robot({ type: "body", label: "Sous-Chef robot" })}
+        ${bubble("What are we cooking, chef?", { size: "lg", tail: "left" })}
       </div>
       <h1>Web Sous-Chef</h1>
       <p class="tagline">A calm, focused kitchen companion</p>
     </section>
 
+    <div class="home-main">
     ${ai.getKey() ? "" : `<div class="notice notice-quiet" style="width:100%"><p><strong>First, a key.</strong> Sous-Chef searches with your own free Gemini key. Timers and tools work without it.</p><div><button type="button" class="btn btn-sm" data-open-settings>Add key</button></div></div>`}
 
     <form class="search-card card card-raised" id="search-form" novalidate>
@@ -230,11 +231,7 @@ function homeView() {
       </div>
     </form>
 
-    <ol class="steps-strip">
-      <li><span class="label">01 · Find</span><p>Recipes from the cooks you trust.</p></li>
-      <li><span class="label">02 · Prep</span><p>Tidied into clear steps. Their amounts, untouched.</p></li>
-      <li><span class="label">03 · Cook</span><p>On your phone, timers ready.</p></li>
-    </ol>
+    </div>
   </div>
   <footer class="site-foot"><span class="label">[ Web Sous-Chef · every recipe credits its cook ]</span></footer>`;
 }
@@ -1143,11 +1140,12 @@ T.subscribe(list => {
 const settingsDialog = $("#settings-dialog");
 function openSettings(message = "") {
   $("#key-input").value = ai.getKey();
-  $("#key-input").type = "password";
+  $("#key-input").classList.add("secret");
   $("#key-show").textContent = "Show";
+  $("#key-show").setAttribute("aria-pressed", "false");
   $("#yt-input").value = ai.getYtKey();
-  $("#model-input").value = ai.getModel() === ai.DEFAULT_MODEL ? "" : ai.getModel();
-  $("#model-input").placeholder = `Default: ${ai.DEFAULT_MODEL}`;
+  $("#model-input").value = ai.getModels().join(", ");
+  $("#model-input").placeholder = ai.DEFAULT_MODELS.join(", ");
   const status = $("#settings-status");
   status.textContent = message;
   status.classList.toggle("is-error", !!message);
@@ -1156,20 +1154,23 @@ function openSettings(message = "") {
 }
 $("#key-show").addEventListener("click", e => {
   const input = $("#key-input");
-  const show = input.type === "password";
-  input.type = show ? "text" : "password";
+  const show = input.classList.contains("secret");
+  input.classList.toggle("secret", !show);
   e.currentTarget.textContent = show ? "Hide" : "Show";
   e.currentTarget.setAttribute("aria-pressed", String(show));
 });
-$("#settings-form").addEventListener("submit", e => {
+function saveSettings() {
   const key = $("#key-input").value.trim();
-  if (!key) { e.preventDefault(); $("#settings-status").textContent = "Paste a Gemini key first."; $("#settings-status").classList.add("is-error"); return; }
+  if (!key) { $("#settings-status").textContent = "Paste a Gemini key first."; $("#settings-status").classList.add("is-error"); return; }
   ai.setKey(key);
   ai.setYtKey($("#yt-input").value);
-  ai.setModel($("#model-input").value);
+  ai.setModels($("#model-input").value);
+  settingsDialog.close();
   toast("Saved in this browser.");
   render();
-});
+}
+$("#settings-save").addEventListener("click", saveSettings);
+$("#settings-form").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); saveSettings(); } });
 $("#key-clear").addEventListener("click", () => {
   ai.clearKey();
   ai.setYtKey("");

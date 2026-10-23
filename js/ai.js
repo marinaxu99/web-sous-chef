@@ -11,7 +11,9 @@ import { youtubeId, hostName, parseClock, isUrl } from "./util.js";
 const KEY_STORAGE = "souschef_gemini_key";
 const YT_KEY_STORAGE = "souschef_youtube_key";
 const MODEL_STORAGE = "souschef_gemini_model";
-export const DEFAULT_MODEL = "gemini-2.5-flash";
+// Tried in order. If one is missing, busy or over its limit, the next one is used.
+export const DEFAULT_MODELS = ["gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-3.5-flash"];
+const MODELS_STORAGE = "souschef_gemini_models";
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const MAX_RESULTS = 6;
 const RECENT_YEARS = 3;
@@ -21,12 +23,17 @@ export const setKey = key => localStorage.setItem(KEY_STORAGE, key.trim());
 export const clearKey = () => localStorage.removeItem(KEY_STORAGE);
 export const getYtKey = () => localStorage.getItem(YT_KEY_STORAGE) || "";
 export const setYtKey = key => (key.trim() ? localStorage.setItem(YT_KEY_STORAGE, key.trim()) : localStorage.removeItem(YT_KEY_STORAGE));
-export const getModel = () => localStorage.getItem(MODEL_STORAGE) || DEFAULT_MODEL;
-export const setModel = model => {
-  const m = model.trim();
-  if (!m || m === DEFAULT_MODEL) localStorage.removeItem(MODEL_STORAGE);
-  else localStorage.setItem(MODEL_STORAGE, m);
+export const getModels = () => {
+  const saved = (localStorage.getItem(MODELS_STORAGE) || "").split(/[\s,]+/).map(m => m.trim()).filter(Boolean);
+  return saved.length ? saved : DEFAULT_MODELS;
 };
+export const setModels = text => {
+  const list = String(text || "").split(/[\s,]+/).map(m => m.trim()).filter(Boolean);
+  if (!list.length || list.join(",") === DEFAULT_MODELS.join(",")) localStorage.removeItem(MODELS_STORAGE);
+  else localStorage.setItem(MODELS_STORAGE, list.join(","));
+};
+// The old single-model setting could hold a name that no longer exists; drop it.
+localStorage.removeItem(MODEL_STORAGE);
 
 export class AiError extends Error {
   constructor(code, message, detail = "") {
@@ -47,7 +54,7 @@ const MESSAGES = {
   NOT_FOUND: "Couldn't open that page or video. It may be private, paywalled or gone.",
   NOT_RECIPE: "That doesn't look like a recipe.",
   NOT_CLASSIC: "That isn't a well-known dish, so Sous-Chef won't write it from scratch. Try a video or blog instead.",
-  MODEL: "That model name wasn't found. Clear it in settings to use the default.",
+  MODEL: "None of your Gemini models answered. Check the model names in Keys, or try again in a minute.",
   HTTP: "Gemini returned an error.",
 };
 
@@ -60,11 +67,36 @@ const isGoogleRedirect = url => /vertexaisearch\.cloud\.google\.com|grounding-ap
 // --------------------------------------------------------------------------
 // Low-level calls
 // --------------------------------------------------------------------------
-async function callGemini({ parts, system, tools, schema, timeoutMs = 45000 }) {
+// Models that failed this session: missing ones are skipped until reload,
+// busy or rate-limited ones rest for a minute.
+const modelBench = new Map();
+const benched = m => { const until = modelBench.get(m); return until && until > Date.now(); };
+
+async function callGemini(req) {
   const key = getKey();
   if (!key) throw new AiError("NO_KEY", MESSAGES.NO_KEY);
-  const model = getModel();
+  const all = getModels();
+  const order = [...all.filter(m => !benched(m)), ...all.filter(benched)];
+  const tried = [];
+  let lastErr = null;
+  for (const model of order) {
+    try {
+      const out = await callModel(model, key, req);
+      out.model = model;
+      return out;
+    } catch (err) {
+      lastErr = err;
+      tried.push(`${model}: ${err.detail || err.code}`);
+      if (!err.retryNext) throw err; // e.g. bad key, blocked content: another model won't help
+      modelBench.set(model, Date.now() + (err.code === "MODEL" ? 6 * 3600e3 : 60e3));
+      console.warn(`Gemini model ${model} failed (${err.detail || err.code}); trying the next one.`);
+    }
+  }
+  const quota = lastErr?.code === "QUOTA" || lastErr?.code === "TIMEOUT";
+  throw new AiError(quota ? lastErr.code : "MODEL", quota ? MESSAGES[lastErr.code] : MESSAGES.MODEL, tried.join(" | "));
+}
 
+async function callModel(model, key, { parts, system, tools, schema, timeoutMs = 45000 }) {
   const generationConfig = { temperature: 0.3, maxOutputTokens: 8192 };
   if (/^gemini-2\.5-flash/.test(model)) generationConfig.thinkingConfig = { thinkingBudget: 0 };
   if (schema) {
@@ -75,6 +107,7 @@ async function callGemini({ parts, system, tools, schema, timeoutMs = 45000 }) {
   if (system) body.systemInstruction = { parts: [{ text: system }] };
   if (tools) body.tools = tools;
 
+  const next = (code, message, detail) => Object.assign(new AiError(code, message, detail), { retryNext: true });
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   let response;
@@ -87,7 +120,7 @@ async function callGemini({ parts, system, tools, schema, timeoutMs = 45000 }) {
     });
   } catch (err) {
     clearTimeout(timer);
-    if (err.name === "AbortError") throw new AiError("TIMEOUT", MESSAGES.TIMEOUT);
+    if (err.name === "AbortError") throw next("TIMEOUT", MESSAGES.TIMEOUT, "timed out");
     throw new AiError("NETWORK", MESSAGES.NETWORK, String(err.message || err));
   }
   clearTimeout(timer);
@@ -96,13 +129,19 @@ async function callGemini({ parts, system, tools, schema, timeoutMs = 45000 }) {
     const data = await response.json().catch(() => ({}));
     const apiMsg = data?.error?.message || "";
     const raw = JSON.stringify(data);
-    const detail = `HTTP ${response.status}${apiMsg ? ` · ${apiMsg}` : ""}`;
-    console.warn("Gemini error", detail, raw.slice(0, 800)); // never includes the key
-    if (response.status === 429) throw new AiError("QUOTA", MESSAGES.QUOTA, detail);
-    if (response.status === 404) throw new AiError("MODEL", MESSAGES.MODEL, detail);
-    if (/API_KEY_INVALID|API key not valid|API_KEY_HTTP_REFERRER_BLOCKED|referer/i.test(raw) || response.status === 401 || response.status === 403) {
+    const detail = `HTTP ${response.status}${apiMsg ? ` · ${apiMsg.slice(0, 160)}` : ""}`;
+    console.warn("Gemini error", model, detail, raw.slice(0, 800)); // never includes the key
+    if (/API_KEY_INVALID|API key not valid|API_KEY_HTTP_REFERRER_BLOCKED|referer/i.test(raw) || response.status === 401) {
       throw new AiError("BAD_KEY", MESSAGES.BAD_KEY, detail);
     }
+    if (response.status === 429) throw next("QUOTA", MESSAGES.QUOTA, detail);
+    if (response.status === 404) throw next("MODEL", MESSAGES.MODEL, detail);
+    if (response.status >= 500) throw next("HTTP", MESSAGES.HTTP, detail);
+    // A model that doesn't support a feature (a tool, JSON mode, thinking settings): try another.
+    if (response.status === 400 && /not supported|unsupported|not enabled|not available|tool|thinking|response_?schema|response_?mime/i.test(apiMsg)) {
+      throw next("HTTP", MESSAGES.HTTP, detail);
+    }
+    if (response.status === 403) throw new AiError("BAD_KEY", MESSAGES.BAD_KEY, detail);
     throw new AiError("HTTP", MESSAGES.HTTP, detail);
   }
 
@@ -111,8 +150,8 @@ async function callGemini({ parts, system, tools, schema, timeoutMs = 45000 }) {
   if (!candidate) throw new AiError("BLOCKED", MESSAGES.BLOCKED, data?.promptFeedback?.blockReason || "");
   const text = (candidate.content?.parts || []).map(p => p.text || "").join("").trim();
   if (!text) {
-    const safety = candidate.finishReason === "SAFETY";
-    throw new AiError(safety ? "BLOCKED" : "PARSE", safety ? MESSAGES.BLOCKED : MESSAGES.PARSE, `finishReason: ${candidate.finishReason || "none"}`);
+    if (candidate.finishReason === "SAFETY") throw new AiError("BLOCKED", MESSAGES.BLOCKED, "finishReason: SAFETY");
+    throw next("PARSE", MESSAGES.PARSE, `finishReason: ${candidate.finishReason || "none"}`);
   }
   return { text, candidate };
 }

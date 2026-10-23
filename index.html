@@ -56,35 +56,34 @@
 
   <!-- Gemini key -->
   <dialog id="settings-dialog" class="dialog" aria-labelledby="settings-title">
-    <form method="dialog" id="settings-form" class="dialog-body">
+    <div id="settings-form" class="dialog-body" role="group" aria-labelledby="settings-title">
       <div class="dialog-head">
         <h2 id="settings-title">Keys</h2>
         <button type="button" class="icon-btn" data-close aria-label="Close">✕</button>
       </div>
       <p class="dialog-note">Sous-Chef runs on your own free Google keys. Get a Gemini key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.</p>
-      <label class="field">
-        <span class="label">Gemini key</span>
+      <div class="field">
+        <label class="label" for="key-input">Gemini key</label>
         <span class="input-row">
-          <input type="password" id="key-input" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Paste your Gemini API key">
+          <input type="text" class="secret" id="key-input" name="sc-gemini" autocomplete="off" autocapitalize="none" spellcheck="false" data-1p-ignore data-lpignore="true" data-form-type="other" placeholder="Paste your Gemini API key">
           <button type="button" class="btn" id="key-show" aria-pressed="false">Show</button>
         </span>
-      </label>
-      <label class="field">
-        <span class="label">YouTube key <span class="muted">· for videos</span></span>
-        <input type="password" id="yt-input" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Leave empty to use the Gemini key">
-      </label>
-      <p class="dialog-note muted">Videos need "YouTube Data API v3" turned on in Google Cloud for whichever key you use.</p>
-      <label class="field">
-        <span class="label">Model <span class="muted">· optional</span></span>
-        <input type="text" id="model-input" autocomplete="off" autocapitalize="none" spellcheck="false">
-      </label>
-      <p class="dialog-note muted">Kept only in this browser and sent straight to Google.</p>
+      </div>
+      <div class="field">
+        <label class="label" for="yt-input">YouTube key <span class="muted">· for videos</span></label>
+        <input type="text" class="secret" id="yt-input" name="sc-youtube" autocomplete="off" autocapitalize="none" spellcheck="false" data-1p-ignore data-lpignore="true" data-form-type="other" placeholder="Leave empty to use the Gemini key">
+      </div>
+      <div class="field">
+        <label class="label" for="model-input">Models <span class="muted">· tried in order</span></label>
+        <input type="text" id="model-input" name="sc-models" autocomplete="off" autocapitalize="none" spellcheck="false" data-form-type="other">
+      </div>
+      <p class="dialog-note muted">If a model is busy or missing, Sous-Chef moves on to the next one. Keys stay in this browser and go straight to Google.</p>
       <p id="settings-status" class="status-line" role="status"></p>
       <div class="dialog-actions">
-        <button type="submit" class="btn btn-primary" value="save">Save</button>
+        <button type="button" class="btn btn-primary" id="settings-save">Save</button>
         <button type="button" class="btn" id="key-clear">Remove keys</button>
       </div>
-    </form>
+    </div>
   </dialog>
 
   <!-- Paste a post (RedNote etc.) -->

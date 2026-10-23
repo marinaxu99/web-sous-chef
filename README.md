@@ -19,7 +19,8 @@ The old `airecipe.html` link now forwards to the new home page.
   private. Two quick protections in Google Cloud Console → APIs & Services → Credentials:
   1. Restrict the key to websites: add `https://souschef.marinamingnanxu.com/*`.
   2. Stay on the free tier, or set a budget alert, so a leaked key can't run up a bill.
-- The settings dialog also lets you change the model. Leave it empty to use `gemini-2.5-flash`.
+- Models are tried in order: `gemini-3.5-flash-lite`, `gemini-2.5-flash`, `gemini-3.5-flash`. If one is
+  missing, busy or over its free limit, the next one answers. Change the list under Keys → Models.
 
 ## Videos (YouTube key)
 
