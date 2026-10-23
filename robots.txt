@@ -1,0 +1,3 @@
+# Private for now. Delete this file (and the robots meta tag in index.html) when you go public.
+User-agent: *
+Disallow: /

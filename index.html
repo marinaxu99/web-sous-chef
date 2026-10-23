@@ -1,38 +1,133 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Web Sous-Chef: Precision kitchen workspace." />
-    <title>Web Sous-Chef</title>
-    <link href="css/style.css" rel="stylesheet">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Web Sous-Chef: real recipes from the cooks you watch and read, cleaned up and ready to cook.">
+  <!-- Private for now: keep search engines out. Remove this line when you go public. -->
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#F6F4EF">
+  <title>Web Sous-Chef</title>
+  <link rel="icon" href="src/images/robot-head.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Orbitron:wght@400;500;600;700&family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="css/style.css" rel="stylesheet">
 </head>
+<body>
+  <a class="skip-link" href="#view">Skip to content</a>
 
-<body class="home-page">
-    <main>
-        <div class="home-container">
-            <div class="intro-container">
-                <a href="airecipe.html" class="thought-bubble-container" aria-label="Open Sous-Chef Recipe Generator">
-                    <img src="src/images/thought_bubble.svg" class="thought-bubble"
-                        alt="Thought bubble link to recipe generator">
-                </a>
-                <a href="airecipe.html" class="robot-link" aria-label="Enter Web Sous-Chef Kitchen">
-                    <img src="src/images/home_robot.svg" class="robot-hero-img"
-                        alt="Robot Sous-Chef mascot illustration">
-                </a>
-                <div class="editorial-titles">
-                    <h1 class="web-title">WEB SOUS-CHEF</h1>
-                    <p class="web-subtitle">A Calm, Focused Culinary Companion</p>
-                </div>
-            </div>
-        </div>
-        <footer class="home-credit">
-            <p>[ WEB SOUS-CHEF WORKSPACE • POWERED BY GEMINI ]</p>
-        </footer>
-    </main>
-    <script src="js/scripts.js" defer></script>
+  <header class="site-header">
+    <a class="brand" href="#/" aria-label="Web Sous-Chef home">
+      <span data-robot="head"></span>
+      <span class="brand-name">Web Sous-Chef</span>
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a class="nav-btn" href="#/tools/timers" data-nav="tools">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l3 2M9 2h6"></path></svg>Kitchen tools</a>
+      <a class="nav-btn" href="#/saved" data-nav="saved">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"></path></svg>Saved<span class="count" data-saved-count></span></a>
+      <button type="button" class="nav-btn icon-only" data-open-settings aria-label="Keys and settings" title="Keys and settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"></circle><path d="M11 12l9-9M17 6l3 3M15 8l2 2"></path></svg>
+      </button>
+    </nav>
+  </header>
+
+  <main id="view" tabindex="-1"></main>
+
+  <div id="dock" class="timer-dock" role="region" aria-label="Running timers" hidden></div>
+
+  <nav class="tabbar" aria-label="App">
+    <a href="#/" data-tab="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M16 16l5 5"></path></svg>
+      <span>Search</span>
+    </a>
+    <a href="#/cook" data-tab="cook">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M6 12v6a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-6M20 12l2-2"></path></svg>
+      <span>Cook</span>
+    </a>
+    <a href="#/tools/timers" data-tab="tools">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l3 2M9 2h6"></path></svg>
+      <span>Tools</span>
+    </a>
+  </nav>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Gemini key -->
+  <dialog id="settings-dialog" class="dialog" aria-labelledby="settings-title">
+    <form method="dialog" id="settings-form" class="dialog-body">
+      <div class="dialog-head">
+        <h2 id="settings-title">Keys</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Close">✕</button>
+      </div>
+      <p class="dialog-note">Sous-Chef runs on your own free Google keys. Get a Gemini key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.</p>
+      <label class="field">
+        <span class="label">Gemini key</span>
+        <span class="input-row">
+          <input type="password" id="key-input" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Paste your Gemini API key">
+          <button type="button" class="btn" id="key-show" aria-pressed="false">Show</button>
+        </span>
+      </label>
+      <label class="field">
+        <span class="label">YouTube key <span class="muted">· for videos</span></span>
+        <input type="password" id="yt-input" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Leave empty to use the Gemini key">
+      </label>
+      <p class="dialog-note muted">Videos need "YouTube Data API v3" turned on in Google Cloud for whichever key you use.</p>
+      <label class="field">
+        <span class="label">Model <span class="muted">· optional</span></span>
+        <input type="text" id="model-input" autocomplete="off" autocapitalize="none" spellcheck="false">
+      </label>
+      <p class="dialog-note muted">Kept only in this browser and sent straight to Google.</p>
+      <p id="settings-status" class="status-line" role="status"></p>
+      <div class="dialog-actions">
+        <button type="submit" class="btn btn-primary" value="save">Save</button>
+        <button type="button" class="btn" id="key-clear">Remove keys</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Paste a post (RedNote etc.) -->
+  <dialog id="paste-dialog" class="dialog" aria-labelledby="paste-title">
+    <form method="dialog" id="paste-form" class="dialog-body">
+      <div class="dialog-head">
+        <h2 id="paste-title">Paste a post</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Close">✕</button>
+      </div>
+      <p class="dialog-note" id="paste-note">From RedNote or any app Sous-Chef can't open. Text, a screenshot, or both.</p>
+      <label class="field">
+        <span class="label">Post text</span>
+        <textarea id="paste-text" rows="6" placeholder="Paste the caption or recipe text"></textarea>
+      </label>
+      <label class="field">
+        <span class="label">Screenshot <span class="muted">· optional</span></span>
+        <input type="file" id="paste-image" accept="image/*">
+      </label>
+      <label class="field">
+        <span class="label">Posted by <span class="muted">· for credit</span></span>
+        <input type="text" id="paste-source" placeholder="e.g. @username on RedNote">
+      </label>
+      <p id="paste-status" class="status-line" role="status"></p>
+      <div class="dialog-actions">
+        <button type="submit" class="btn btn-primary" value="go">Prep it →</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Timer finished -->
+  <dialog id="alarm-dialog" class="dialog dialog-alarm" aria-labelledby="alarm-title">
+    <div class="dialog-body">
+      <span class="alarm-robot" data-robot="head" data-color="#FFFFFF"></span>
+      <h2 id="alarm-title">Timer done</h2>
+      <p class="alarm-over"><span id="alarm-over">+00:00</span><span class="label" style="display:inline;font-size:11px;color:#fff">past target</span></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-accent" id="alarm-stop">Stop chime</button>
+        <button type="button" class="btn btn-outline-light" id="alarm-more">+1 min</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="js/vendor/qrcode.js"></script>
+  <script type="module" src="js/app.js"></script>
 </body>
-
 </html>
